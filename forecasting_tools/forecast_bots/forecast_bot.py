@@ -851,9 +851,8 @@ class ForecastBot(ABC):
         else:
             summarizer = GeneralLlm(model="gpt-4o-mini", temperature=0.3)
 
-        if os.getenv("ASKNEWS_CLIENT_ID") and os.getenv("ASKNEWS_SECRET"):
-            researcher = "asknews/news-summaries"
-        elif os.getenv("PERPLEXITY_API_KEY"):
+        # Modified researcher priority order
+        if os.getenv("PERPLEXITY_API_KEY"):
             researcher = GeneralLlm(
                 model="perplexity/sonar-pro", temperature=0.1
             )
@@ -863,6 +862,8 @@ class ForecastBot(ABC):
             )
         elif os.getenv("EXA_API_KEY"):
             researcher = f"smart-searcher/{main_default_llm.model}"
+        elif os.getenv("ASKNEWS_CLIENT_ID") and os.getenv("ASKNEWS_SECRET"):
+            researcher = "asknews/news-summaries"
         else:
             researcher = GeneralLlm(
                 model="perplexity/sonar-pro", temperature=0.1
