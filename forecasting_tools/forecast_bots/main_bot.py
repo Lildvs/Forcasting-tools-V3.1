@@ -21,7 +21,7 @@ class MainBot(Q1TemplateBot2025):
         self,
         *,
         research_reports_per_question: int = 1,
-        predictions_per_research_report: int = 5,
+        predictions_per_research_report: int = 3,
         use_research_summary_to_forecast: bool = False,
         **kwargs,
     ) -> None:
