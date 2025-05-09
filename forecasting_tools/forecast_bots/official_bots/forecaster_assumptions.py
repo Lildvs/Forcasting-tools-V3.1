@@ -4,7 +4,6 @@ These serve as the single source of truth for all forecasting logic and assumpti
 """
 
 FORECASTER_THOUGHT_PROCESS = {
-    "version": "1.0.0",
     "priority_steps": [
         "You prioritize obvious logical steps",
         "You consider historical precedents",
@@ -21,6 +20,10 @@ FORECASTER_THOUGHT_PROCESS = {
         "Historical patterns can inform future outcomes"
     ],
     
+    "considerations": [
+        "Most societies aim to do good as a whole. Sometimes those societies do bad things for what their societies think is good and moral. Yet every once in a while an evil yet powerful person will rise to the highest ranks of their respective societies. This leader then tends to have that society bully other societies or groups of humans which then disrupts the balance of power in that region."
+    ],
+
     "analysis_framework": {
         "binary": [
             "The time left until the outcome to the question is known",
