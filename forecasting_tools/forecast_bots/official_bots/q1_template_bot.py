@@ -25,6 +25,7 @@ from forecasting_tools.forecast_helpers.prediction_extractor import (
     PredictionExtractor,
 )
 from forecasting_tools.forecast_helpers.smart_searcher import SmartSearcher
+from forecasting_tools.forecast_bots.official_bots.forecaster_assumptions import FORECASTER_THOUGHT_PROCESS
 
 logger = logging.getLogger(__name__)
 
@@ -132,9 +133,27 @@ class Q1TemplateBot2025(ForecastBot):
     async def _run_forecast_on_binary(
         self, question: BinaryQuestion, research: str
     ) -> ReasonedPrediction[float]:
+        # Format the thought process
+        thought_process = "\n".join([
+            f"{i+1}. {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["priority_steps"])
+        ])
+        
+        base_assumptions = "\n".join([
+            f"- {assumption}" for assumption in FORECASTER_THOUGHT_PROCESS["base_assumptions"]
+        ])
+        
+        analysis_steps = "\n".join([
+            f"({chr(97+i)}) {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["analysis_framework"]["binary"])
+        ])
+
         prompt = clean_indents(
             f"""
-            You are a professional forecaster interviewing for a job.
+            You are a professional forecaster interviewing for a job. As an interviewee your train-of-thought is as follows:
+
+            {thought_process}
+
+            Your base assumptions:
+            {base_assumptions}
 
             Your interview question is:
             {question.question_text}
@@ -142,12 +161,10 @@ class Q1TemplateBot2025(ForecastBot):
             Question background:
             {question.background_info}
 
-
             This question's outcome will be determined by the specific criteria below. These criteria have not yet been satisfied:
             {question.resolution_criteria}
 
             {question.fine_print}
-
 
             Your research assistant says:
             {research}
@@ -155,14 +172,11 @@ class Q1TemplateBot2025(ForecastBot):
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
             Before answering you write:
-            (a) The time left until the outcome to the question is known.
-            (b) The status quo outcome if nothing changed.
-            (c) A brief description of a scenario that results in a No outcome.
-            (d) A brief description of a scenario that results in a Yes outcome.
+            {analysis_steps}
 
-            You write your rationale remembering that good forecasters put extra weight on the status quo outcome since the world changes slowly most of the time.
+            {FORECASTER_THOUGHT_PROCESS["core_principles"][0]}
 
-            The last thing you write is your final answer as: "Probability: ZZ%", 0-100
+            The last thing you write is your final answer as: "{FORECASTER_THOUGHT_PROCESS["output_formats"]["binary"]}", 0-100
             """
         )
         reasoning = await self.get_llm("default", "llm").invoke(prompt)
@@ -179,15 +193,32 @@ class Q1TemplateBot2025(ForecastBot):
     async def _run_forecast_on_multiple_choice(
         self, question: MultipleChoiceQuestion, research: str
     ) -> ReasonedPrediction[PredictedOptionList]:
+        # Format the thought process
+        thought_process = "\n".join([
+            f"{i+1}. {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["priority_steps"])
+        ])
+        
+        base_assumptions = "\n".join([
+            f"- {assumption}" for assumption in FORECASTER_THOUGHT_PROCESS["base_assumptions"]
+        ])
+        
+        analysis_steps = "\n".join([
+            f"({chr(97+i)}) {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["analysis_framework"]["multiple_choice"])
+        ])
+
         prompt = clean_indents(
             f"""
-            You are a professional forecaster interviewing for a job.
+            You are a professional forecaster interviewing for a job. As an interviewee your train-of-thought is as follows:
+
+            {thought_process}
+
+            Your base assumptions:
+            {base_assumptions}
 
             Your interview question is:
             {question.question_text}
 
             The options are: {question.options}
-
 
             Background:
             {question.background_info}
@@ -196,24 +227,18 @@ class Q1TemplateBot2025(ForecastBot):
 
             {question.fine_print}
 
-
             Your research assistant says:
             {research}
 
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
             Before answering you write:
-            (a) The time left until the outcome to the question is known.
-            (b) The status quo outcome if nothing changed.
-            (c) A description of an scenario that results in an unexpected outcome.
+            {analysis_steps}
 
-            You write your rationale remembering that (1) good forecasters put extra weight on the status quo outcome since the world changes slowly most of the time, and (2) good forecasters leave some moderate probability on most options to account for unexpected outcomes.
+            {FORECASTER_THOUGHT_PROCESS["core_principles"][2]}
 
             The last thing you write is your final probabilities for the N options in this order {question.options} as:
-            Option_A: Probability_A
-            Option_B: Probability_B
-            ...
-            Option_N: Probability_N
+            {FORECASTER_THOUGHT_PROCESS["output_formats"]["multiple_choice"]}
             """
         )
         reasoning = await self.get_llm("default", "llm").invoke(prompt)
@@ -235,9 +260,28 @@ class Q1TemplateBot2025(ForecastBot):
         upper_bound_message, lower_bound_message = (
             self._create_upper_and_lower_bound_messages(question)
         )
+        
+        # Format the thought process
+        thought_process = "\n".join([
+            f"{i+1}. {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["priority_steps"])
+        ])
+        
+        base_assumptions = "\n".join([
+            f"- {assumption}" for assumption in FORECASTER_THOUGHT_PROCESS["base_assumptions"]
+        ])
+        
+        analysis_steps = "\n".join([
+            f"({chr(97+i)}) {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["analysis_framework"]["numeric"])
+        ])
+
         prompt = clean_indents(
             f"""
-            You are a professional forecaster interviewing for a job.
+            You are a professional forecaster interviewing for a job. As an interviewee your train-of-thought is as follows:
+
+            {thought_process}
+
+            Your base assumptions:
+            {base_assumptions}
 
             Your interview question is:
             {question.question_text}
@@ -248,7 +292,6 @@ class Q1TemplateBot2025(ForecastBot):
             {question.resolution_criteria}
 
             {question.fine_print}
-
 
             Your research assistant says:
             {research}
@@ -264,24 +307,12 @@ class Q1TemplateBot2025(ForecastBot):
             - Always start with a smaller number (more negative if negative) and then increase from there
 
             Before answering you write:
-            (a) The time left until the outcome to the question is known.
-            (b) The outcome if nothing changed.
-            (c) The outcome if the current trend continued.
-            (d) The expectations of experts and markets.
-            (e) A brief description of an unexpected scenario that results in a low outcome.
-            (f) A brief description of an unexpected scenario that results in a high outcome.
+            {analysis_steps}
 
-            You remind yourself that good forecasters are humble and set wide 90/10 confidence intervals to account for unknown unknowns.
+            {FORECASTER_THOUGHT_PROCESS["core_principles"][1]}
 
             The last thing you write is your final answer as:
-            "
-            Percentile 10: XX
-            Percentile 20: XX
-            Percentile 40: XX
-            Percentile 60: XX
-            Percentile 80: XX
-            Percentile 90: XX
-            "
+            {FORECASTER_THOUGHT_PROCESS["output_formats"]["numeric"]}
             """
         )
         reasoning = await self.get_llm("default", "llm").invoke(prompt)
