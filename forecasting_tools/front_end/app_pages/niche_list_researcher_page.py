@@ -92,27 +92,6 @@ class NicheListResearchPage(ToolPage):
                 )
 
     @classmethod
-    async def _save_run_to_coda(
-        cls,
-        input_to_tool: NicheListInput,
-        output: NicheListOutput,
-        is_premade: bool,
-    ) -> None:
-        if is_premade:
-            output.cost = 0
-        ForecastDatabaseManager.add_general_report_to_database(
-            question_text=input_to_tool.question_text,
-            background_info=None,
-            resolution_criteria=None,
-            fine_print=None,
-            prediction=len(output.niche_list_items),
-            explanation=output.markdown_output,
-            page_url=None,
-            price_estimate=output.cost,
-            run_type=ForecastRunType.WEB_APP_NICHE_LIST,
-        )
-
-    @classmethod
     async def _display_outputs(cls, outputs: list[NicheListOutput]) -> None:
         for output in outputs:
             with st.expander(f"{output.question_text}"):

@@ -64,38 +64,17 @@ class EstimatorPage(ToolPage):
 
     @classmethod
     async def _run_tool(cls, input: EstimatorInput) -> EstimatorOutput:
-        with MonetaryCostManager() as cost_manager:
-            estimator = Estimator(input.estimate_type, input.previous_research)
-            number, markdown = await estimator.estimate_size()
-            cost = cost_manager.current_usage
-            return EstimatorOutput(
-                estimate_type=input.estimate_type,
-                previous_research=input.previous_research,
-                number=number,
-                markdown=markdown,
-                cost=cost,
-            )
-
-    @classmethod
-    async def _save_run_to_coda(
-        cls,
-        input_to_tool: EstimatorInput,
-        output: EstimatorOutput,
-        is_premade: bool,
-    ) -> None:
-        if is_premade:
-            output.cost = 0
-        ForecastDatabaseManager.add_general_report_to_database(
-            question_text=output.estimate_type,
-            background_info=output.previous_research,
-            resolution_criteria=None,
-            fine_print=None,
-            prediction=output.number,
-            explanation=output.markdown,
-            page_url=None,
-            price_estimate=output.cost,
-            run_type=ForecastRunType.WEB_APP_ESTIMATOR,
-        )
+        with st.spinner("Analyzing... This may take a minute or two..."):
+            with MonetaryCostManager() as cost_manager:
+                estimator = Estimator(input.estimate_type)
+                estimate = await estimator.make_estimate()
+                cost = cost_manager.current_usage
+                return EstimatorOutput(
+                    estimate_type=input.estimate_type,
+                    number=estimate.number,
+                    markdown=estimate.markdown,
+                    cost=cost,
+                )
 
     @classmethod
     async def _display_outputs(cls, outputs: list[EstimatorOutput]) -> None:

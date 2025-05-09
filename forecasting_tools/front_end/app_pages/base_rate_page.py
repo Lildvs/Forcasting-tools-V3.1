@@ -67,19 +67,6 @@ class BaseRatePage(ToolPage):
             ).make_base_rate_report()
 
     @classmethod
-    async def _save_run_to_coda(
-        cls,
-        input_to_tool: BaseRateInput,
-        output: BaseRateReport,
-        is_premade: bool,
-    ) -> None:
-        if is_premade:
-            output.price_estimate = 0
-        ForecastDatabaseManager.add_base_rate_report_to_database(
-            output, ForecastRunType.WEB_APP_BASE_RATE
-        )
-
-    @classmethod
     async def _display_outputs(cls, outputs: list[BaseRateReport]) -> None:
         for report in outputs:
             with st.expander(report.question):

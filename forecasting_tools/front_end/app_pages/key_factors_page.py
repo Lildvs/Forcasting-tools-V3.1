@@ -70,52 +70,23 @@ class KeyFactorsPage(ToolPage):
     @classmethod
     async def _run_tool(cls, input: KeyFactorsInput) -> KeyFactorsOutput:
         with st.spinner(
-            "Finding key factors... This may take a minute or two..."
+            "Researching and fact-checking... This may take several minutes..."
         ):
-            question_id = cls.__extract_question_id(input.metaculus_url)
-            metaculus_question = MetaculusApi.get_question_by_post_id(
-                question_id
-            )
-
             with MonetaryCostManager() as cost_manager:
-                num_questions_to_research = 16
-                num_key_factors_to_return = 7
-                key_factors = await KeyFactorsResearcher.find_and_sort_key_factors(
-                    metaculus_question,
-                    num_questions_to_research_with=num_questions_to_research,
-                    num_key_factors_to_return=num_key_factors_to_return,
-                )
-                cost = cost_manager.current_usage
-                markdown = ScoredKeyFactor.turn_key_factors_into_markdown_list(
-                    key_factors
-                )
-                return KeyFactorsOutput(
-                    question_text=metaculus_question.question_text,
-                    markdown=markdown,
-                    cost=cost,
-                    scored_key_factors=key_factors,
+                generator = KeyFactorsResearcher(input.question_text)
+                fact_checked_items = (
+                    await generator.research_key_factors(
+                        return_invalid_items=True
+                    )
                 )
 
-    @classmethod
-    async def _save_run_to_coda(
-        cls,
-        input_to_tool: KeyFactorsInput,
-        output: KeyFactorsOutput,
-        is_premade: bool,
-    ) -> None:
-        if is_premade:
-            output.cost = 0
-        ForecastDatabaseManager.add_general_report_to_database(
-            question_text=output.question_text,
-            background_info=None,
-            resolution_criteria=None,
-            fine_print=None,
-            prediction=None,
-            explanation=output.markdown,
-            page_url=None,
-            price_estimate=output.cost,
-            run_type=ForecastRunType.WEB_APP_KEY_FACTORS,
-        )
+                cost = cost_manager.current_usage
+
+                return KeyFactorsOutput(
+                    question_text=input.question_text,
+                    cost=cost,
+                    key_factors_items=fact_checked_items,
+                )
 
     @classmethod
     async def _display_outputs(cls, outputs: list[KeyFactorsOutput]) -> None:

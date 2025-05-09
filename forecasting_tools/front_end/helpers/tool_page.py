@@ -130,29 +130,6 @@ class ToolPage(AppPage, ABC):
             except Exception as e:
                 logger.error(f"Error saving output to file: {e}")
 
-        # Allow manipulation of the output when prepping to save it to database without affecting the original
-        assert isinstance(input_to_tool, BaseModel)
-        assert isinstance(output, BaseModel)
-        input_to_tool = input_to_tool.model_copy(deep=True)
-        output = output.model_copy(deep=True)
-
-        try:
-            await cls._save_run_to_coda(
-                input_to_tool, output, is_premade_example
-            )
-        except Exception as e:
-            logger.error(f"Error saving output to Coda: {e}")
-
-    @classmethod
-    @abstractmethod
-    async def _save_run_to_coda(
-        cls,
-        input_to_tool: Jsonable,
-        output: Jsonable,
-        is_premade_example: bool,
-    ) -> None:
-        pass
-
     @classmethod
     async def _save_output_to_session_state(cls, output: Jsonable) -> None:
         assert isinstance(output, cls.OUTPUT_TYPE)

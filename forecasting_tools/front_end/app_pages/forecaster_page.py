@@ -89,28 +89,8 @@ class ForecasterPage(ToolPage):
 
     @classmethod
     async def _run_tool(cls, input: ForecastInput) -> BinaryReport:
-        with st.spinner("Forecasting... This may take a minute or two..."):
-            report = await MainBot(
-                research_reports_per_question=1,
-                predictions_per_research_report=5,
-                publish_reports_to_metaculus=False,
-                folder_to_save_reports_to=None,
-            ).forecast_question(input.question)
-            assert isinstance(report, BinaryReport)
-            return report
-
-    @classmethod
-    async def _save_run_to_coda(
-        cls,
-        input_to_tool: ForecastInput,
-        output: BinaryReport,
-        is_premade: bool,
-    ) -> None:
-        if is_premade:
-            output.price_estimate = 0
-        ForecastDatabaseManager.add_forecast_report_to_database(
-            output, run_type=ForecastRunType.WEB_APP_FORECAST
-        )
+        with st.spinner("Analyzing... This may take a minute or two..."):
+            return await Forecaster(input.question).make_binary_report()
 
     @classmethod
     async def _display_outputs(cls, outputs: list[BinaryReport]) -> None:
