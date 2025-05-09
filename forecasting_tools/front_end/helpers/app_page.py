@@ -56,14 +56,13 @@ class AppPage(ABC):
     def footer(cls):
         st.markdown("---")
         st.write(
-            "This is the demo site for the "
-            "[forecasting-tools python package](https://github.com/CodexVeritas/forecasting-tools)."
+            "This is the demo site for: "
+            "https://github.com/Lildvs/Forcasting-tools-V3"
         )
         st.write(
-            "Give feedback on the [Forecasting Tools Discord](https://discord.gg/Dtq4JNdXnw) or email "
-            "me at ben [at] metaculus [dot com]. "
-            "Let me know what I can do to make this a tool you will want to use "
-            "every day! Let me know if you want to chat and we can find a time!"
+            "Thank you to the Metaculus team for the opportunity to join this tournament! "
+            "Please give feedback on the [Forecasting Tools Discord](https://discord.gg/Dtq4JNdXnw). "
+            "Shoutout to Lex Fridman, God speed sir."
         )
         st.write(
             "Queries made to the website are saved to a database and may be "
