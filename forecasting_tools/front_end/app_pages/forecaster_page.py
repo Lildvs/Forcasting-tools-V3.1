@@ -90,7 +90,14 @@ class ForecasterPage(ToolPage):
     @classmethod
     async def _run_tool(cls, input: ForecastInput) -> BinaryReport:
         with st.spinner("Analyzing... This may take a minute or two..."):
-            return await Forecaster(input.question).make_binary_report()
+            bot = MainBot(
+                research_reports_per_question=1,
+                predictions_per_research_report=1,
+                use_research_summary_to_forecast=False,
+                publish_reports_to_metaculus=False
+            )
+            report = await bot.forecast_question(input.question)
+            return report
 
     @classmethod
     async def _display_outputs(cls, outputs: list[BinaryReport]) -> None:
