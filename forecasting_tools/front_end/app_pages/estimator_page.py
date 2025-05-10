@@ -67,12 +67,12 @@ class EstimatorPage(ToolPage):
         with st.spinner("Analyzing... This may take a minute or two..."):
             with MonetaryCostManager() as cost_manager:
                 estimator = Estimator(input.estimate_type)
-                estimate = await estimator.make_estimate()
+                estimate = await estimator.estimate_size()
                 cost = cost_manager.current_usage
                 return EstimatorOutput(
                     estimate_type=input.estimate_type,
-                    number=estimate.number,
-                    markdown=estimate.markdown,
+                    number=estimate.count,
+                    markdown=estimate.explanation,
                     cost=cost,
                 )
 
