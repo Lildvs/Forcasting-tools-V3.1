@@ -3,6 +3,37 @@ This module contains the core assumptions and thought processes used by the fore
 These serve as the single source of truth for all forecasting logic and assumptions.
 """
 
+FORCASTER_DATA_COLLECTION_AND_ANALYSIS = {
+    "Data Collection": [
+        "Provided with resources R, gather as much data as you can, from this list of desired data, about X"
+    ],
+    "World Model": [
+        '"World model" here likely means, "A set of stored symbolic and probabilistic assumptions about the world / people / organizations."',
+        "Given a forecasting LLM L, and forecasting question Q, contribute a world model that will result in L being highly accurate."
+    ],
+    "Human Elicitation": {
+        "enabled": False,
+        "prompts": [
+            "You are a professional forecaster interviewing for a job.",
+            "Given that you want to get as much useful new data about topic X, using Perplexity Sonar's deep research capabilities with high search context and reasoning effort, use resources R to send off elicitions and gather data from humans."
+        ]
+    },
+    "Data Prioritization": [
+        "Given the potential to fetch from data source D, and resources R, fetch the most useful data for providing marginal insight on unknown variables V.",
+        "Write 5 forecasting questions on topic X. After this, a separate epistemic system will be run with a fixed number of resources R on each question. Choose questions such that the final results are maximally useful to end-users."
+    ],
+    "Idea Generation": [
+        "Given a person with details D, generate a plan for that person to optimize their question."
+    ],
+    "Enhanced Forecasting": {
+        "enabled": False,
+        "prompts": [
+            "Using information I, and N LLM calls, make your best forecast on variable V.",
+            "Using an existing LEP L, and resources R, write a set of forecasting questions. Expect that forecasting resources F will be used on these questions, and you are trying to optimize utility function U."
+        ]
+    }
+}
+
 FORECASTER_THOUGHT_PROCESS = {
     "priority_steps": [
         "You prioritize obvious logical steps",

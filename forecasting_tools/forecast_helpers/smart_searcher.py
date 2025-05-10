@@ -236,64 +236,66 @@ class SmartSearcher(OutputsText, AiModel):
         report = await self.llm.invoke(prompt)
         return report
 
+    def __add_links_to_citations(
+        self, report: str, highlights: list[ExaHighlightQuote]
+    ) -> str:
+        """Add proper citation links to the report using actual source URLs."""
+        for i, highlight in enumerate(highlights):
+            citation_num = i + 1
+            source_url = highlight.source.url
+            
+            # Only create text fragment if we have a valid URL
+            if source_url and source_url.startswith(('http://', 'https://')):
+                less_than_10_words = len(highlight.highlight_text.split()) < 10
+                if less_than_10_words:
+                    text_fragment = highlight.highlight_text
+                else:
+                    first_five_words = " ".join(
+                        highlight.highlight_text.split()[:5]
+                    )
+                    last_five_words = " ".join(
+                        highlight.highlight_text.split()[-5:]
+                    )
+                    encoded_first_five_words = urllib.parse.quote(
+                        first_five_words, safe=""
+                    )
+                    encoded_last_five_words = urllib.parse.quote(
+                        last_five_words, safe=""
+                    )
+                    text_fragment = f"{encoded_first_five_words},{encoded_last_five_words}"
+                
+                text_fragment = text_fragment.replace("(", "%28").replace(
+                    ")", "%29"
+                )
+                text_fragment = text_fragment.replace("-", "%2D").strip(",")
+                text_fragment = text_fragment.replace(" ", "%20")
+                
+                # Create the citation link
+                citation_link = f"[{citation_num}]({source_url}#:~:text={text_fragment})"
+                
+                # Replace the citation number with the link
+                report = report.replace(f"[{citation_num}]", citation_link)
+            
+        return report
+
     @staticmethod
     def __turn_highlights_into_search_context_for_prompt(
         highlights: list[ExaHighlightQuote],
     ) -> str:
+        """Format highlights into a search context with proper source attribution."""
         search_context = ""
         for i, highlight in enumerate(highlights):
             url = highlight.source.url
             title = highlight.source.title
             publish_date = highlight.source.readable_publish_date
-            search_context += f'[{i+1}] "{highlight.highlight_text}". [This quote is from {url} titled "{title}", published on {publish_date}]\n'
+            
+            # Only include sources with valid URLs
+            if url and url.startswith(('http://', 'https://')):
+                search_context += f'[{i+1}] "{highlight.highlight_text}". [Source: {url} - {title} ({publish_date})]\n'
+            else:
+                search_context += f'[{i+1}] "{highlight.highlight_text}". [Source: {title} ({publish_date})]\n'
+        
         return search_context
-
-    def __add_links_to_citations(
-        self, report: str, highlights: list[ExaHighlightQuote]
-    ) -> str:
-        for i, highlight in enumerate(highlights):
-            citation_num = i + 1
-            less_than_10_words = len(highlight.highlight_text.split()) < 10
-            if less_than_10_words:
-                text_fragment = highlight.highlight_text
-            else:
-                first_five_words = " ".join(
-                    highlight.highlight_text.split()[:5]
-                )
-                last_five_words = " ".join(
-                    highlight.highlight_text.split()[-5:]
-                )
-                encoded_first_five_words = urllib.parse.quote(
-                    first_five_words, safe=""
-                )
-                encoded_last_five_words = urllib.parse.quote(
-                    last_five_words, safe=""
-                )
-                text_fragment = f"{encoded_first_five_words},{encoded_last_five_words}"  # Comma indicates that anything can be included in between
-            text_fragment = text_fragment.replace("(", "%28").replace(
-                ")", "%29"
-            )
-            text_fragment = text_fragment.replace("-", "%2D").strip(",")
-            text_fragment = text_fragment.replace(" ", "%20")
-            fragment_url = f"{highlight.source.url}#:~:text={text_fragment}"
-
-            if self.use_citation_brackets:
-                markdown_url = f"\\[[{citation_num}]({fragment_url})\\]"
-            else:
-                markdown_url = f"[{citation_num}]({fragment_url})"
-
-            # Combined regex pattern for all citation types
-            pattern = re.compile(
-                r"(?:\\\[)?(\[{}\](?:\(.*?\))?)(?:\\\])?".format(citation_num)
-            )
-            # Matches:
-            # [1]
-            # [1](some text)
-            # \[[1]\]
-            # \[[1](some text)\]
-            report = pattern.sub(markdown_url, report)
-
-        return report
 
     @staticmethod
     def _get_cheap_input_for_invoke() -> str:

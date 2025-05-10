@@ -91,8 +91,8 @@ class ForecasterPage(ToolPage):
     async def _run_tool(cls, input: ForecastInput) -> BinaryReport:
         with st.spinner("Analyzing... This may take a minute or two..."):
             bot = MainBot(
-                research_reports_per_question=1,
-                predictions_per_research_report=1,
+                research_reports_per_question=3,
+                predictions_per_research_report=5,
                 use_research_summary_to_forecast=False,
                 publish_reports_to_metaculus=False
             )
