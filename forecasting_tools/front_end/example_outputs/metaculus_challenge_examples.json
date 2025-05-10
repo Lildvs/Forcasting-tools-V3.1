@@ -1,54 +1,52 @@
-{
-    "examples": [
-        {
-            "input": {
-                "question_url": "https://www.metaculus.com/questions/3479/will-the-us-enter-a-recession-in-2023/",
-                "research_reports": 2, 
-                "predictions_per_report": 5,
-                "publish_to_metaculus": false
-            },
-            "output": {
-                "question_url": "https://www.metaculus.com/questions/3479/will-the-us-enter-a-recession-in-2023/",
-                "report": {
-                    "question": {
-                        "question_text": "Will the US enter a recession in 2023?",
-                        "background_info": "A recession is a significant decline in economic activity that is spread across the economy and that lasts more than a few months.",
-                        "resolution_criteria": "This question will resolve as Yes if the National Bureau of Economic Research (NBER) declare that a recession began in 2023.",
-                        "fine_print": "Resolution will be based solely on NBER's determination, regardless of when the determination is made.",
-                        "page_url": "https://www.metaculus.com/questions/3479/will-the-us-enter-a-recession-in-2023/",
-                        "api_json": {}
-                    },
-                    "reasoning": "Based on current economic indicators, the likelihood of the US entering a recession in 2023 appears low. The labor market remains strong with unemployment at 3.7%, and while inflation has been a concern, it has been gradually decreasing from its peak. GDP growth has been positive in recent quarters, and consumer spending remains resilient. The Federal Reserve's monetary policy, while restrictive, has managed a soft landing scenario so far. Various economic forecasting models from institutions like Goldman Sachs and JP Morgan have reduced their recession probability estimates for 2023. While some sectors show weakness, overall economic data does not currently support NBER declaring a recession for 2023.",
-                    "final_prediction": 0.15,
-                    "created_at": "2023-12-10T12:00:00Z",
-                    "research": "Economic indicators show mixed signals. The labor market remains strong with unemployment at 3.7%. Inflation has been cooling from its peak but remains above the Fed's 2% target. GDP growth has been positive, with Q3 2023 showing a 4.9% annualized rate. Leading economic indicators suggest slowing but not contractionary conditions. Consumer spending has remained resilient despite higher interest rates. While some sectors like manufacturing and housing show weakness, services sector remains strong. The yield curve inversion, historically a recession predictor, has been present but other indicators contradict recessionary signals. The Federal Reserve's monetary policy has been restrictive but appears to be achieving a soft landing scenario. Most economic forecasts from major institutions have lowered recession probabilities for 2023."
-                }
-            }
+[
+    {
+        "input": {
+            "question_url": "https://www.metaculus.com/questions/3479/will-the-us-enter-a-recession-in-2023/",
+            "research_reports": 2, 
+            "predictions_per_report": 5,
+            "publish_to_metaculus": false
         },
-        {
-            "input": {
-                "question_url": "https://www.metaculus.com/questions/18272/will-there-be-a-confirmed-human-case-of-h5n1-bird-flu-in-the-contiguous-us-in-2024/",
-                "research_reports": 1, 
-                "predictions_per_report": 3,
-                "publish_to_metaculus": false
-            },
-            "output": {
-                "question_url": "https://www.metaculus.com/questions/18272/will-there-be-a-confirmed-human-case-of-h5n1-bird-flu-in-the-contiguous-us-in-2024/",
-                "report": {
-                    "question": {
-                        "question_text": "Will there be a confirmed human case of H5N1 bird flu in the contiguous US in 2024?",
-                        "background_info": "H5N1 is a highly pathogenic avian influenza virus that has caused outbreaks in birds across several continents. While primarily affecting birds, H5N1 can occasionally infect humans who have close contact with infected birds.",
-                        "resolution_criteria": "This question resolves positively if at least one confirmed case of human H5N1 infection is reported by the CDC or WHO within the contiguous United States (excluding Alaska and Hawaii) during the 2024 calendar year.",
-                        "fine_print": "The case must be laboratory-confirmed as H5N1 and must have been contracted within the contiguous US.",
-                        "page_url": "https://www.metaculus.com/questions/18272/will-there-be-a-confirmed-human-case-of-h5n1-bird-flu-in-the-contiguous-us-in-2024/",
-                        "api_json": {}
-                    },
-                    "reasoning": "Based on current evidence, there is a moderate probability of a confirmed human H5N1 case in the contiguous US in 2024. The virus has been spreading in US dairy cattle since late 2023, with increased human exposure through farm workers. While transmission to humans remains rare, the first US human case was already confirmed in April 2024 in a dairy worker in Texas. The CDC has reported finding H5N1 genetic material in milk, and human exposure continues through the dairy industry. Surveillance has intensified, increasing the likelihood of detecting cases. Given the ongoing outbreaks in cattle and poultry, and the precedent of one case already in 2024, there is a substantial chance of at least one more confirmed case before year's end.",
-                    "final_prediction": 0.72,
-                    "created_at": "2024-05-01T12:00:00Z",
-                    "research": "H5N1 bird flu is currently experiencing unprecedented spread in US dairy cattle since late 2023. The CDC confirmed the first US human case of H5N1 in a Texas dairy worker in April 2024, who experienced conjunctivitis as the primary symptom. The virus continues to spread, with infections detected in dairy herds across multiple states. While human-to-human transmission remains rare, farm workers and others in direct contact with infected animals have increased exposure risk. The CDC has found H5N1 genetic material in retail milk samples, though properly pasteurized milk remains safe for consumption. Enhanced surveillance protocols have been implemented by health authorities, which increases the likelihood of detecting cases. Current virus strains show limited adaptation to humans, with most infections resulting in mild symptoms. However, the ongoing outbreaks in US dairy cattle and poultry farms continue to create opportunities for human exposure."
-                }
+        "output": {
+            "question_url": "https://www.metaculus.com/questions/3479/will-the-us-enter-a-recession-in-2023/",
+            "report": {
+                "question": {
+                    "question_text": "Will the US enter a recession in 2023?",
+                    "background_info": "A recession is a significant decline in economic activity that is spread across the economy and that lasts more than a few months.",
+                    "resolution_criteria": "This question will resolve as Yes if the National Bureau of Economic Research (NBER) declare that a recession began in 2023.",
+                    "fine_print": "Resolution will be based solely on NBER's determination, regardless of when the determination is made.",
+                    "page_url": "https://www.metaculus.com/questions/3479/will-the-us-enter-a-recession-in-2023/",
+                    "api_json": {}
+                },
+                "reasoning": "Based on current economic indicators, the likelihood of the US entering a recession in 2023 appears low. The labor market remains strong with unemployment at 3.7%, and while inflation has been a concern, it has been gradually decreasing from its peak. GDP growth has been positive in recent quarters, and consumer spending remains resilient. The Federal Reserve's monetary policy, while restrictive, has managed a soft landing scenario so far. Various economic forecasting models from institutions like Goldman Sachs and JP Morgan have reduced their recession probability estimates for 2023. While some sectors show weakness, overall economic data does not currently support NBER declaring a recession for 2023.",
+                "final_prediction": 0.15,
+                "created_at": "2023-12-10T12:00:00Z",
+                "research": "Economic indicators show mixed signals. The labor market remains strong with unemployment at 3.7%. Inflation has been cooling from its peak but remains above the Fed's 2% target. GDP growth has been positive, with Q3 2023 showing a 4.9% annualized rate. Leading economic indicators suggest slowing but not contractionary conditions. Consumer spending has remained resilient despite higher interest rates. While some sectors like manufacturing and housing show weakness, services sector remains strong. The yield curve inversion, historically a recession predictor, has been present but other indicators contradict recessionary signals. The Federal Reserve's monetary policy has been restrictive but appears to be achieving a soft landing scenario. Most economic forecasts from major institutions have lowered recession probabilities for 2023."
             }
         }
-    ]
-} 
+    },
+    {
+        "input": {
+            "question_url": "https://www.metaculus.com/questions/18272/will-there-be-a-confirmed-human-case-of-h5n1-bird-flu-in-the-contiguous-us-in-2024/",
+            "research_reports": 1, 
+            "predictions_per_report": 3,
+            "publish_to_metaculus": false
+        },
+        "output": {
+            "question_url": "https://www.metaculus.com/questions/18272/will-there-be-a-confirmed-human-case-of-h5n1-bird-flu-in-the-contiguous-us-in-2024/",
+            "report": {
+                "question": {
+                    "question_text": "Will there be a confirmed human case of H5N1 bird flu in the contiguous US in 2024?",
+                    "background_info": "H5N1 is a highly pathogenic avian influenza virus that has caused outbreaks in birds across several continents. While primarily affecting birds, H5N1 can occasionally infect humans who have close contact with infected birds.",
+                    "resolution_criteria": "This question resolves positively if at least one confirmed case of human H5N1 infection is reported by the CDC or WHO within the contiguous United States (excluding Alaska and Hawaii) during the 2024 calendar year.",
+                    "fine_print": "The case must be laboratory-confirmed as H5N1 and must have been contracted within the contiguous US.",
+                    "page_url": "https://www.metaculus.com/questions/18272/will-there-be-a-confirmed-human-case-of-h5n1-bird-flu-in-the-contiguous-us-in-2024/",
+                    "api_json": {}
+                },
+                "reasoning": "Based on current evidence, there is a moderate probability of a confirmed human H5N1 case in the contiguous US in 2024. The virus has been spreading in US dairy cattle since late 2023, with increased human exposure through farm workers. While transmission to humans remains rare, the first US human case was already confirmed in April 2024 in a dairy worker in Texas. The CDC has reported finding H5N1 genetic material in milk, and human exposure continues through the dairy industry. Surveillance has intensified, increasing the likelihood of detecting cases. Given the ongoing outbreaks in cattle and poultry, and the precedent of one case already in 2024, there is a substantial chance of at least one more confirmed case before year's end.",
+                "final_prediction": 0.72,
+                "created_at": "2024-05-01T12:00:00Z",
+                "research": "H5N1 bird flu is currently experiencing unprecedented spread in US dairy cattle since late 2023. The CDC confirmed the first US human case of H5N1 in a Texas dairy worker in April 2024, who experienced conjunctivitis as the primary symptom. The virus continues to spread, with infections detected in dairy herds across multiple states. While human-to-human transmission remains rare, farm workers and others in direct contact with infected animals have increased exposure risk. The CDC has found H5N1 genetic material in retail milk samples, though properly pasteurized milk remains safe for consumption. Enhanced surveillance protocols have been implemented by health authorities, which increases the likelihood of detecting cases. Current virus strains show limited adaptation to humans, with most infections resulting in mild symptoms. However, the ongoing outbreaks in US dairy cattle and poultry farms continue to create opportunities for human exposure."
+            }
+        }
+    }
+] 
