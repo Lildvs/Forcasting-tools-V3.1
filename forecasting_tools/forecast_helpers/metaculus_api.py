@@ -130,17 +130,33 @@ class MetaculusApi:
     def get_question_by_post_id(cls, post_id: int) -> MetaculusQuestion:
         logger.info(f"Retrieving question details for question {post_id}")
         url = f"{cls.API_BASE_URL}/posts/{post_id}/"
-        response = requests.get(
-            url,
-            **cls._get_auth_headers(),  # type: ignore
-        )
-        raise_for_status_with_additional_info(response)
-        json_question = json.loads(response.content)
-        metaculus_question = MetaculusApi._metaculus_api_json_to_question(
-            json_question
-        )
-        logger.info(f"Retrieved question details for question {post_id}")
-        return metaculus_question
+        
+        # First try to get the question without authentication, as reading public questions doesn't require auth
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            json_question = json.loads(response.content)
+            metaculus_question = MetaculusApi._metaculus_api_json_to_question(
+                json_question
+            )
+            logger.info(f"Retrieved question details for question {post_id} without authentication")
+            return metaculus_question
+        except Exception as e:
+            logger.warning(f"Failed to get question without authentication: {e}. Trying with authentication.")
+            
+        # If failed, try with authentication
+        try:
+            response = requests.get(url, **cls._get_auth_headers())  # type: ignore
+            response.raise_for_status()
+            json_question = json.loads(response.content)
+            metaculus_question = MetaculusApi._metaculus_api_json_to_question(
+                json_question
+            )
+            logger.info(f"Retrieved question details for question {post_id} with authentication")
+            return metaculus_question
+        except Exception as auth_e:
+            logger.error(f"Failed to get question with authentication: {auth_e}")
+            raise
 
     @classmethod
     async def get_questions_matching_filter(
@@ -632,6 +648,64 @@ class MetaculusApi:
                     continue
                 questions_with_cp_reveal_time.append(question)
         return questions_with_cp_reveal_time
+
+    @classmethod
+    async def get_all_active_questions(cls, limit: int = 20) -> list[MetaculusQuestion]:
+        """
+        Get a list of active Metaculus questions without requiring authentication.
+        
+        Args:
+            limit: Maximum number of questions to return
+            
+        Returns:
+            A list of MetaculusQuestion objects
+        """
+        logger.info(f"Retrieving {limit} active Metaculus questions without authentication")
+        url = f"{cls.API_BASE_URL}/posts/"
+        params = {
+            "limit": limit,
+            "offset": 0,
+            "status": "open",
+            "order_by": "-published_at",
+            "with_cp": "true",
+        }
+        
+        try:
+            # Get questions without authentication
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            data = json.loads(response.content)
+            results = data.get("results", [])
+            
+            # Filter out non-question posts
+            supported_posts = [
+                q for q in results
+                if "notebook" not in q
+                and "group_of_questions" not in q
+                and "conditional" not in q
+                and "question" in q
+            ]
+            
+            # Convert to question objects
+            questions = []
+            for q in supported_posts:
+                try:
+                    questions.append(cls._metaculus_api_json_to_question(q))
+                except Exception as e:
+                    logger.warning(f"Error processing post ID {q.get('id')}: {e.__class__.__name__} {e}")
+            
+            logger.info(f"Retrieved {len(questions)} active questions without authentication")
+            return questions
+            
+        except Exception as e:
+            logger.error(f"Failed to get active questions: {e}")
+            # Fall back to the regular method that may use authentication
+            try:
+                api_filter = ApiFilter(allowed_statuses=["open"], allowed_types=["binary", "numeric", "multiple_choice"])
+                return await cls.get_questions_matching_filter(api_filter=api_filter, num_questions=limit)
+            except Exception as auth_e:
+                logger.error(f"Failed to get active questions with authentication fallback: {auth_e}")
+                return []
 
 
 class ApiFilter(BaseModel):

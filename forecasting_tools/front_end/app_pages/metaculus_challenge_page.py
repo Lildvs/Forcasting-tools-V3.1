@@ -72,29 +72,43 @@ class MetaculusChallengePage(ToolPage):
         3. Adjust bot parameters as needed
         """)
         
+        # Initialize authentication first
+        cls._init_auth()
+        
+        # Display authentication status and settings
         cls._show_settings()
+        
+        # Show random questions if available
         await cls._display_random_questions()
+    
+    @classmethod
+    def _init_auth(cls) -> None:
+        """Initialize authentication from Streamlit secrets if available"""
+        try:
+            # Streamlit Cloud: Try to get credentials from secrets
+            if hasattr(st, "secrets") and "metaculus" in st.secrets:
+                if "token" in st.secrets.metaculus:
+                    os.environ["METACULUS_TOKEN"] = st.secrets.metaculus.token
+                    logger.info("Set METACULUS_TOKEN from Streamlit secrets")
+                
+                if "api_key" in st.secrets.metaculus:
+                    os.environ["METACULUS_API_KEY"] = st.secrets.metaculus.api_key
+                    logger.info("Set METACULUS_API_KEY from Streamlit secrets")
+                    
+                if "username" in st.secrets.metaculus:
+                    os.environ["METACULUS_USERNAME"] = st.secrets.metaculus.username
+                    logger.info("Set METACULUS_USERNAME from Streamlit secrets")
+                    
+                if "password" in st.secrets.metaculus:
+                    os.environ["METACULUS_PASSWORD"] = st.secrets.metaculus.password
+                    logger.info("Set METACULUS_PASSWORD from Streamlit secrets")
+        except Exception as e:
+            logger.warning(f"Error accessing Streamlit secrets: {e}")
     
     @classmethod
     def _show_settings(cls) -> None:
         """Show and manage Metaculus API settings"""
         with st.expander("Metaculus API Settings"):
-            # Check if running on Streamlit Cloud with secrets
-            try:
-                if hasattr(st, "secrets") and "metaculus" in st.secrets:
-                    st.info("Using Metaculus credentials from Streamlit secrets.")
-                    # Set environment variables from secrets
-                    if "api_key" in st.secrets.metaculus:
-                        os.environ["METACULUS_API_KEY"] = st.secrets.metaculus.api_key
-                    if "token" in st.secrets.metaculus:
-                        os.environ["METACULUS_TOKEN"] = st.secrets.metaculus.token
-                    if "username" in st.secrets.metaculus:
-                        os.environ["METACULUS_USERNAME"] = st.secrets.metaculus.username
-                    if "password" in st.secrets.metaculus:
-                        os.environ["METACULUS_PASSWORD"] = st.secrets.metaculus.password
-            except Exception as e:
-                logger.warning(f"Error accessing Streamlit secrets: {e}")
-                
             # Initialize settings from session state or defaults
             if "metaculus_settings" not in st.session_state:
                 st.session_state.metaculus_settings = MetaculusChallengeSettings(
@@ -104,6 +118,13 @@ class MetaculusChallengePage(ToolPage):
                 )
             
             settings = st.session_state.metaculus_settings
+            
+            # Display current authentication status
+            auth_status = cls._get_auth_status()
+            if auth_status["authenticated"]:
+                st.success("✅ Successfully authenticated with Metaculus")
+            else:
+                st.warning("❌ Not authenticated with Metaculus. Please provide credentials.")
             
             # API credentials form
             with st.form("metaculus_settings_form"):
@@ -150,18 +171,50 @@ class MetaculusChallengePage(ToolPage):
                             st.error(f"Failed to generate token: {str(e)}")
                     
                     st.success("Settings saved!")
-                    
-            # Show current environment variable status
-            st.markdown("### Environment Variables Status")
-            api_key_status = "✅ Set" if "METACULUS_API_KEY" in os.environ else "❌ Not Set"
-            username_status = "✅ Set" if "METACULUS_USERNAME" in os.environ else "❌ Not Set"
-            password_status = "✅ Set" if "METACULUS_PASSWORD" in os.environ else "❌ Not Set"
-            token_status = "✅ Set" if "METACULUS_TOKEN" in os.environ else "❌ Not Set"
+                    st.experimental_rerun()
             
-            st.markdown(f"- API Key: {api_key_status}")
-            st.markdown(f"- Username: {username_status}")
-            st.markdown(f"- Password: {password_status}")
-            st.markdown(f"- Token: {token_status}")
+            # Show environment variables status
+            st.markdown("### Authentication Status")
+            
+            # Show detailed status information
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**Credentials**")
+                st.markdown(f"- API Key: {'✅ Set' if os.environ.get('METACULUS_API_KEY') else '❌ Not Set'}")
+                st.markdown(f"- Username: {'✅ Set' if os.environ.get('METACULUS_USERNAME') else '❌ Not Set'}")
+                st.markdown(f"- Password: {'✅ Set' if os.environ.get('METACULUS_PASSWORD') else '❌ Not Set'}")
+            
+            with col2:
+                st.markdown("**Token**")
+                token_status = '✅ Set' if os.environ.get('METACULUS_TOKEN') else '❌ Not Set'
+                st.markdown(f"- Authentication Token: {token_status}")
+                
+                # If we have credentials but no token, show option to generate token
+                if (os.environ.get('METACULUS_USERNAME') and 
+                    os.environ.get('METACULUS_PASSWORD') and 
+                    not os.environ.get('METACULUS_TOKEN')):
+                    if st.button("Generate Token", key="generate_token_button"):
+                        st.info("Generating token...")
+                        username = os.environ.get('METACULUS_USERNAME', '')
+                        password = os.environ.get('METACULUS_PASSWORD', '')
+                        asyncio.create_task(cls._generate_and_set_token(username, password))
+                        st.experimental_rerun()
+    
+    @classmethod
+    def _get_auth_status(cls) -> dict:
+        """Get the current authentication status"""
+        token = os.environ.get("METACULUS_TOKEN")
+        username = os.environ.get("METACULUS_USERNAME")
+        password = os.environ.get("METACULUS_PASSWORD")
+        api_key = os.environ.get("METACULUS_API_KEY")
+        
+        return {
+            "authenticated": token is not None,
+            "has_token": token is not None,
+            "has_username": username is not None,
+            "has_password": password is not None,
+            "has_api_key": api_key is not None,
+        }
     
     @classmethod
     async def _generate_and_set_token(cls, username: str, password: str) -> None:
@@ -238,6 +291,15 @@ class MetaculusChallengePage(ToolPage):
     async def _run_tool(cls, input: MetaculusChallengeInput) -> MetaculusChallengeOutput:
         with st.spinner("Fetching question and generating forecast... This may take a few minutes..."):
             try:
+                # Verify authentication first
+                auth_status = cls._get_auth_status()
+                if not auth_status["authenticated"]:
+                    if input.publish_to_metaculus:
+                        st.error("Authentication required to publish forecasts to Metaculus. Please provide your credentials in the Settings section.")
+                        raise ValueError("Authentication required for publishing forecasts")
+                    else:
+                        st.warning("Not authenticated with Metaculus. Will proceed in read-only mode.")
+                
                 # Create the bot with the specified settings
                 bot = MainBot(
                     research_reports_per_question=input.research_reports,
@@ -246,7 +308,14 @@ class MetaculusChallengePage(ToolPage):
                 )
                 
                 # Get the question from Metaculus
-                question = await MetaculusApi.get_question_by_url(input.question_url)
+                try:
+                    question = await MetaculusApi.get_question_by_url(input.question_url)
+                except ValueError as e:
+                    if "METACULUS_TOKEN environment variable not set" in str(e):
+                        st.error("Failed to retrieve the question: Authentication required. Please provide your Metaculus credentials in Settings.")
+                        raise ValueError("Authentication required to retrieve this question")
+                    else:
+                        raise
                 
                 # Run the forecast
                 report = await bot.forecast_question(question)
@@ -258,6 +327,7 @@ class MetaculusChallengePage(ToolPage):
                 
             except Exception as e:
                 st.error(f"Error forecasting question: {type(e).__name__} - {str(e)}")
+                logger.exception(f"Error in _run_tool: {e}")
                 raise
     
     @classmethod
@@ -278,6 +348,7 @@ class MetaculusChallengePage(ToolPage):
             if st.button("Fetch Random Questions"):
                 with st.spinner("Fetching random Metaculus questions..."):
                     try:
+                        # Use the authentication-free method to get questions
                         all_active_questions = await MetaculusApi.get_all_active_questions(limit=10)
                         
                         # Filter to reasonable questions
@@ -294,12 +365,19 @@ class MetaculusChallengePage(ToolPage):
                                     st.markdown(f"**{q.question_text}**")
                                     st.markdown(f"Type: {q.question_type}")
                                     st.markdown(f"URL: {q.page_url}")
+                                    
+                                    # Add a button to use this question
+                                    if st.button(f"Use this question", key=f"use_question_{i}"):
+                                        st.session_state[cls.QUESTION_URL_INPUT] = q.page_url
+                                        st.experimental_rerun()
+                                    
                                     st.markdown("---")
                         else:
                             st.warning("No valid questions found. Please try again later.")
                             
                     except Exception as e:
                         st.error(f"Error fetching questions: {type(e).__name__} - {str(e)}")
+                        logger.exception(f"Error in _display_random_questions: {e}")
 
 
 if __name__ == "__main__":
