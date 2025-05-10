@@ -66,13 +66,14 @@ class EstimatorPage(ToolPage):
     async def _run_tool(cls, input: EstimatorInput) -> EstimatorOutput:
         with st.spinner("Analyzing... This may take a minute or two..."):
             with MonetaryCostManager() as cost_manager:
-                estimator = Estimator(input.estimate_type)
-                count, explanation = await estimator.estimate_size()
+                estimator = Estimator(input.estimate_type, input.previous_research)
+                estimate = await estimator.estimate_size()
                 cost = cost_manager.current_usage
                 return EstimatorOutput(
                     estimate_type=input.estimate_type,
-                    number=count,
-                    markdown=explanation,
+                    previous_research=input.previous_research,
+                    number=estimate.count,
+                    markdown=estimate.explanation,
                     cost=cost,
                 )
 
