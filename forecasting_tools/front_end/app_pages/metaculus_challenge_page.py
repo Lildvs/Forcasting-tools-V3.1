@@ -45,6 +45,7 @@ class MetaculusChallengePage(ToolPage):
     URL_PATH: str = "/metaculus-challenge"
     INPUT_TYPE = MetaculusChallengeInput
     OUTPUT_TYPE = MetaculusChallengeOutput
+    EXAMPLES_FILE_PATH = "forecasting_tools/front_end/example_outputs/metaculus_challenge_examples.json"
     
     # Form input keys
     QUESTION_URL_INPUT = "question_url_input"
