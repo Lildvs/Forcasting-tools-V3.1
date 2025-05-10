@@ -17,6 +17,9 @@ from forecasting_tools.front_end.app_pages.forecaster_page import (
 from forecasting_tools.front_end.app_pages.key_factors_page import (
     KeyFactorsPage,
 )
+from forecasting_tools.front_end.app_pages.metaculus_challenge_page import (
+    MetaculusChallengePage,
+)
 from forecasting_tools.front_end.app_pages.niche_list_researcher_page import (
     NicheListResearchPage,
 )
@@ -38,6 +41,7 @@ class HomePage(AppPage):
     ESTIMATOR_PAGE: type[AppPage] = EstimatorPage
     KEY_FACTORS_PAGE: type[AppPage] = KeyFactorsPage
     QUESTION_GENERATION_PAGE: type[AppPage] = QuestionGeneratorPage
+    METACULUS_CHALLENGE_PAGE: type[AppPage] = MetaculusChallengePage
     NON_HOME_PAGES: list[type[AppPage]] = [
         FORECASTER_PAGE,
         KEY_FACTORS_PAGE,
@@ -45,6 +49,7 @@ class HomePage(AppPage):
         NICHE_LIST_RESEARCH_PAGE,
         ESTIMATOR_PAGE,
         QUESTION_GENERATION_PAGE,
+        METACULUS_CHALLENGE_PAGE,
     ]
 
     @classmethod
