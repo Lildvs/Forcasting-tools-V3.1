@@ -79,9 +79,29 @@ class MetaculusChallengePage(ToolPage):
     def _show_settings(cls) -> None:
         """Show and manage Metaculus API settings"""
         with st.expander("Metaculus API Settings"):
+            # Check if running on Streamlit Cloud with secrets
+            try:
+                if hasattr(st, "secrets") and "metaculus" in st.secrets:
+                    st.info("Using Metaculus credentials from Streamlit secrets.")
+                    # Set environment variables from secrets
+                    if "api_key" in st.secrets.metaculus:
+                        os.environ["METACULUS_API_KEY"] = st.secrets.metaculus.api_key
+                    if "token" in st.secrets.metaculus:
+                        os.environ["METACULUS_TOKEN"] = st.secrets.metaculus.token
+                    if "username" in st.secrets.metaculus:
+                        os.environ["METACULUS_USERNAME"] = st.secrets.metaculus.username
+                    if "password" in st.secrets.metaculus:
+                        os.environ["METACULUS_PASSWORD"] = st.secrets.metaculus.password
+            except Exception as e:
+                logger.warning(f"Error accessing Streamlit secrets: {e}")
+                
             # Initialize settings from session state or defaults
             if "metaculus_settings" not in st.session_state:
-                st.session_state.metaculus_settings = MetaculusChallengeSettings()
+                st.session_state.metaculus_settings = MetaculusChallengeSettings(
+                    api_key=os.environ.get("METACULUS_API_KEY", ""),
+                    username=os.environ.get("METACULUS_USERNAME", ""),
+                    password=os.environ.get("METACULUS_PASSWORD", "")
+                )
             
             settings = st.session_state.metaculus_settings
             
@@ -121,7 +141,42 @@ class MetaculusChallengePage(ToolPage):
                     if password:
                         os.environ["METACULUS_PASSWORD"] = password
                     
+                    # Generate token if we have username and password but no token in environment
+                    if username and password and "METACULUS_TOKEN" not in os.environ:
+                        st.info("Generating Metaculus token from credentials...")
+                        try:
+                            asyncio.create_task(cls._generate_and_set_token(username, password))
+                        except Exception as e:
+                            st.error(f"Failed to generate token: {str(e)}")
+                    
                     st.success("Settings saved!")
+                    
+            # Show current environment variable status
+            st.markdown("### Environment Variables Status")
+            api_key_status = "✅ Set" if "METACULUS_API_KEY" in os.environ else "❌ Not Set"
+            username_status = "✅ Set" if "METACULUS_USERNAME" in os.environ else "❌ Not Set"
+            password_status = "✅ Set" if "METACULUS_PASSWORD" in os.environ else "❌ Not Set"
+            token_status = "✅ Set" if "METACULUS_TOKEN" in os.environ else "❌ Not Set"
+            
+            st.markdown(f"- API Key: {api_key_status}")
+            st.markdown(f"- Username: {username_status}")
+            st.markdown(f"- Password: {password_status}")
+            st.markdown(f"- Token: {token_status}")
+    
+    @classmethod
+    async def _generate_and_set_token(cls, username: str, password: str) -> None:
+        """Generate and set Metaculus token from username and password"""
+        from forecasting_tools.forecast_helpers.metaculus_api import MetaculusApi
+        
+        try:
+            token = await MetaculusApi.get_auth_token(username, password)
+            if token:
+                os.environ["METACULUS_TOKEN"] = token
+                st.success("Successfully generated Metaculus token")
+            else:
+                st.error("Failed to generate Metaculus token")
+        except Exception as e:
+            st.error(f"Error generating token: {type(e).__name__} - {str(e)}")
     
     @classmethod
     async def _get_input(cls) -> MetaculusChallengeInput | None:

@@ -221,15 +221,63 @@ class MetaculusApi:
 
     @classmethod
     def _get_auth_headers(cls) -> dict[str, dict[str, str]]:
+        # Try to get token from environment variables
         METACULUS_TOKEN = os.getenv("METACULUS_TOKEN")
+        
+        # If not in environment variables, check Streamlit secrets
         if METACULUS_TOKEN is None:
-            raise ValueError("METACULUS_TOKEN environment variable not set")
+            try:
+                import streamlit as st
+                if hasattr(st, "secrets") and "metaculus" in st.secrets and "token" in st.secrets.metaculus:
+                    METACULUS_TOKEN = st.secrets.metaculus.token
+                    logger.info("Using Metaculus token from Streamlit secrets")
+            except ImportError:
+                pass
+            except Exception as e:
+                logger.warning(f"Error accessing Streamlit secrets: {e}")
+        
+        if METACULUS_TOKEN is None:
+            raise ValueError("METACULUS_TOKEN environment variable not set and not found in Streamlit secrets")
+            
         return {
             "headers": {
                 "Authorization": f"Token {METACULUS_TOKEN}",
                 "Accept-Language": "en",
             }
         }
+
+    @classmethod
+    async def get_auth_token(cls, username: str, password: str) -> str:
+        """
+        Get an authentication token from Metaculus API using username and password.
+        
+        Args:
+            username: Metaculus username
+            password: Metaculus password
+            
+        Returns:
+            Authentication token as a string
+            
+        Raises:
+            ValueError: If authentication fails
+        """
+        url = f"{cls.API_BASE_URL}/accounts/login/"
+        try:
+            response = requests.post(
+                url,
+                json={"username": username, "password": password}
+            )
+            response.raise_for_status()
+            data = response.json()
+            if "token" not in data:
+                raise ValueError("Authentication succeeded but no token was returned")
+                
+            logger.info(f"Successfully obtained Metaculus auth token for user {username}")
+            return data["token"]
+            
+        except Exception as e:
+            logger.error(f"Failed to get Metaculus auth token: {type(e).__name__} - {str(e)}")
+            raise ValueError(f"Failed to authenticate with Metaculus: {str(e)}")
 
     @classmethod
     def _post_question_prediction(
