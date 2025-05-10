@@ -365,12 +365,6 @@ class MetaculusChallengePage(ToolPage):
                                     st.markdown(f"**{q.question_text}**")
                                     st.markdown(f"Type: {q.question_type}")
                                     st.markdown(f"URL: {q.page_url}")
-                                    
-                                    # Add a button to use this question
-                                    if st.button(f"Use this question", key=f"use_question_{i}"):
-                                        st.session_state[cls.QUESTION_URL_INPUT] = q.page_url
-                                        st.experimental_rerun()
-                                    
                                     st.markdown("---")
                         else:
                             st.warning("No valid questions found. Please try again later.")
