@@ -14,6 +14,7 @@ from forecasting_tools.forecast_bots.official_bots.forecaster_assumptions import
     FORCASTER_DATA_COLLECTION_AND_ANALYSIS
 )
 from forecasting_tools.forecast_helpers.asknews_searcher import AskNewsSearcher
+from forecasting_tools.forecast_helpers.crawl4ai_searcher import Crawl4AISearcher
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +143,32 @@ class MainBot(Q1TemplateBot2025):
                     news_research = await AskNewsSearcher().get_formatted_news_async(question.question_text)
                     research = f"{research}\n\nNews Analysis:\n{news_research}"
                 
+                if os.getenv("CRAWL4AI_API_KEY"):
+                    try:
+                        crawl4ai_searcher = Crawl4AISearcher()
+                        crawl4ai_research = await crawl4ai_searcher.get_formatted_search_results(
+                            query=question.question_text,
+                            depth=2  # Default depth
+                        )
+                        research = f"{research}\n\nDeep Web Research:\n{crawl4ai_research}"
+                        
+                        # Add Crawl4AI as a source
+                        self.research_sources.append(
+                            ResearchSource(
+                                title="Crawl4AI Deep Search Results",
+                                url="https://crawl4ai.com",
+                                content=crawl4ai_research,
+                                source_type="Deep Web Search",
+                                published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            )
+                        )
+                        
+                        # Clean up resources
+                        await crawl4ai_searcher.close()
+                        
+                    except Exception as e:
+                        logger.error(f"Error using Crawl4AI: {e}")
+                
             elif os.getenv("OPENROUTER_API_KEY"):
                 # Fallback to OpenRouter with similar configuration
                 model = GeneralLlm(
@@ -209,6 +236,32 @@ class MainBot(Q1TemplateBot2025):
                     published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 )
             )
+        
+        if os.getenv("CRAWL4AI_API_KEY"):
+            try:
+                crawl4ai_searcher = Crawl4AISearcher()
+                crawl4ai_research = await crawl4ai_searcher.get_formatted_search_results(
+                    query=question.question_text,
+                    depth=2  # Default depth
+                )
+                research_parts.append(crawl4ai_research)
+                
+                # Add Crawl4AI as a source
+                self.research_sources.append(
+                    ResearchSource(
+                        title="Crawl4AI Deep Search Results",
+                        url="https://crawl4ai.com",
+                        content=crawl4ai_research,
+                        source_type="Deep Web Search",
+                        published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    )
+                )
+                
+                # Clean up resources
+                await crawl4ai_searcher.close()
+                
+            except Exception as e:
+                logger.error(f"Error using Crawl4AI: {e}")
         
         return "\n\n".join(research_parts) if research_parts else ""
 
