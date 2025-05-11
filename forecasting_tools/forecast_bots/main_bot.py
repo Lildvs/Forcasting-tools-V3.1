@@ -15,6 +15,7 @@ from forecasting_tools.forecast_bots.official_bots.forecaster_assumptions import
 )
 from forecasting_tools.forecast_helpers.asknews_searcher import AskNewsSearcher
 from forecasting_tools.forecast_helpers.crawl4ai_searcher import Crawl4AISearcher
+from forecasting_tools.forecast_helpers.browser_searcher import BrowserSearcher
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class MainBot(Q1TemplateBot2025):
         research_reports_per_question: int = 3,
         predictions_per_research_report: int = 5,
         use_research_summary_to_forecast: bool = False,
+        use_browser_automation: bool = False,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -48,6 +50,14 @@ class MainBot(Q1TemplateBot2025):
             **kwargs,
         )
         self.research_sources: List[ResearchSource] = []
+        self.use_browser_automation = use_browser_automation
+        # Check if browser automation is available
+        if self.use_browser_automation:
+            is_available = BrowserSearcher.is_available()
+            if not is_available:
+                logger.warning("Browser automation requested but Playwright is not available.")
+                logger.warning("Install with: pip install playwright && python -m playwright install")
+                self.use_browser_automation = False
 
     def _format_sources(self) -> str:
         """Format the collected sources into a readable string."""
@@ -169,6 +179,33 @@ class MainBot(Q1TemplateBot2025):
                         if 'crawl4ai_searcher' in locals():
                             await crawl4ai_searcher.close()
                 
+                # Add browser-based research if enabled
+                if self.use_browser_automation:
+                    try:
+                        browser_searcher = BrowserSearcher()
+                        # Use the question text to search on metaforecast.org
+                        browser_research = await browser_searcher.get_formatted_search_results(
+                            query=question.question_text
+                        )
+                        research = f"{research}\n\nBrowser-Based Research:\n{browser_research}"
+                        
+                        # Add Browser research as a source
+                        self.research_sources.append(
+                            ResearchSource(
+                                title="Browser Automated Research",
+                                url="https://metaforecast.org",
+                                content=browser_research,
+                                source_type="Browser Automation",
+                                published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            )
+                        )
+                    except Exception as e:
+                        logger.error(f"Error using Browser automation: {e}")
+                    finally:
+                        # Always clean up resources
+                        if 'browser_searcher' in locals():
+                            await browser_searcher.close()
+                
             elif os.getenv("OPENROUTER_API_KEY"):
                 # Fallback to OpenRouter with similar configuration
                 model = GeneralLlm(
@@ -263,6 +300,33 @@ class MainBot(Q1TemplateBot2025):
                 # Always clean up resources, even if an exception occurred
                 if 'crawl4ai_searcher' in locals():
                     await crawl4ai_searcher.close()
+        
+        # Add browser-based research if enabled
+        if self.use_browser_automation:
+            try:
+                browser_searcher = BrowserSearcher()
+                # Use the question text to search on metaforecast.org
+                browser_research = await browser_searcher.get_formatted_search_results(
+                    query=question.question_text
+                )
+                research_parts.append(browser_research)
+                
+                # Add Browser research as a source
+                self.research_sources.append(
+                    ResearchSource(
+                        title="Browser Automated Research",
+                        url="https://metaforecast.org",
+                        content=browser_research,
+                        source_type="Browser Automation",
+                        published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    )
+                )
+            except Exception as e:
+                logger.error(f"Error using Browser automation: {e}")
+            finally:
+                # Always clean up resources
+                if 'browser_searcher' in locals():
+                    await browser_searcher.close()
         
         return "\n\n".join(research_parts) if research_parts else ""
 

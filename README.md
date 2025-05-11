@@ -35,3 +35,55 @@ All the examples below are in a Jupyter Notebook called `README.ipynb` which you
 Join the [discord](https://discord.gg/Dtq4JNdXnw) for updates and to give feedback (btw feedback is very appreciated, even just a quick "I did/didn't decide to use tool X for reason Y, though am busy and don't have time to elaborate" is helpful to know)
 
 Note: This package is still in an experimental phase. The goal is to keep the package API fairly stable, though no guarantees are given at this phase. There will be special effort to keep the ForecastBot and TemplateBot APIs consistent.
+
+## Browser Automation
+
+The forecasting tools now include browser automation capabilities using Playwright, enabling deeper research for questions that require interaction with dynamic web content.
+
+### Setup
+
+Install Playwright and browsers:
+
+```bash
+pip install playwright
+python -m playwright install
+```
+
+### Usage
+
+Browser automation can be enabled when creating a `MainBot` instance:
+
+```python
+from forecasting_tools.forecast_bots.main_bot import MainBot
+
+# Create bot with browser automation enabled
+bot = MainBot(use_browser_automation=True)
+```
+
+### Security Measures
+
+The browser automation implementation includes several security features:
+
+- XSS protection with content sanitization
+- Resource exhaustion prevention with browser pooling
+- Secure credential management via Streamlit secrets
+- Prevention of browser fingerprinting
+- Isolation of browser contexts
+- Proper error handling and resource cleanup
+
+### Configuration
+
+Browser automation can be configured via Streamlit secrets by adding this to your `.streamlit/secrets.toml` file:
+
+```toml
+[playwright]
+username = "optional_username"
+password = "optional_password"
+```
+
+Or by setting environment variables:
+
+```bash
+export PLAYWRIGHT_USERNAME="optional_username"
+export PLAYWRIGHT_PASSWORD="optional_password"
+```
