@@ -25,9 +25,27 @@ class Crawl4AISearcher:
         
         Args:
             api_key: Optional API key. If not provided, will try to load from 
-                    CRAWL4AI_API_KEY environment variable.
+                    CRAWL4AI_API_KEY environment variable or Streamlit secrets.
         """
-        self.api_key = api_key or os.getenv("CRAWL4AI_API_KEY")
+        # Try to get the API key from the provided parameter
+        self.api_key = api_key
+        
+        # If no API key was provided, try to get it from environment variables
+        if self.api_key is None:
+            self.api_key = os.getenv("CRAWL4AI_API_KEY")
+            
+        # If still no API key, try to get it from Streamlit secrets
+        if self.api_key is None:
+            try:
+                import streamlit as st
+                if hasattr(st, "secrets") and "crawl4ai" in st.secrets and "api_key" in st.secrets.crawl4ai:
+                    self.api_key = st.secrets.crawl4ai.api_key
+                    logger.info("Using Crawl4AI API key from Streamlit secrets")
+            except ImportError:
+                pass
+            except Exception as e:
+                logger.warning(f"Error accessing Streamlit secrets: {e}")
+        
         self.base_url = "https://api.crawl4ai.com/v1"
         self.session = None
     

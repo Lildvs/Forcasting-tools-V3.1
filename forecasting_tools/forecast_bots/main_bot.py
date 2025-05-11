@@ -162,12 +162,12 @@ class MainBot(Q1TemplateBot2025):
                                 published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             )
                         )
-                        
-                        # Clean up resources
-                        await crawl4ai_searcher.close()
-                        
                     except Exception as e:
                         logger.error(f"Error using Crawl4AI: {e}")
+                    finally:
+                        # Always clean up resources, even if an exception occurred
+                        if 'crawl4ai_searcher' in locals():
+                            await crawl4ai_searcher.close()
                 
             elif os.getenv("OPENROUTER_API_KEY"):
                 # Fallback to OpenRouter with similar configuration
@@ -257,11 +257,12 @@ class MainBot(Q1TemplateBot2025):
                     )
                 )
                 
-                # Clean up resources
-                await crawl4ai_searcher.close()
-                
             except Exception as e:
                 logger.error(f"Error using Crawl4AI: {e}")
+            finally:
+                # Always clean up resources, even if an exception occurred
+                if 'crawl4ai_searcher' in locals():
+                    await crawl4ai_searcher.close()
         
         return "\n\n".join(research_parts) if research_parts else ""
 
