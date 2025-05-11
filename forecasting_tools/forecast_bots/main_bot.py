@@ -14,7 +14,6 @@ from forecasting_tools.forecast_bots.official_bots.forecaster_assumptions import
     FORCASTER_DATA_COLLECTION_AND_ANALYSIS
 )
 from forecasting_tools.forecast_helpers.asknews_searcher import AskNewsSearcher
-from forecasting_tools.forecast_helpers.crawl4ai_searcher import Crawl4AISearcher
 
 logger = logging.getLogger(__name__)
 
@@ -143,24 +142,6 @@ class MainBot(Q1TemplateBot2025):
                     news_research = await AskNewsSearcher().get_formatted_news_async(question.question_text)
                     research = f"{research}\n\nNews Analysis:\n{news_research}"
                 
-                if os.getenv("CRAWL4AI_API_KEY"):
-                    crawl_searcher = Crawl4AISearcher()
-                    crawl_research = await crawl_searcher.get_formatted_search_results_async(question.question_text)
-                    research = f"{research}\n\nDeep Web Research:\n{crawl_research}"
-                    
-                    # Add Crawl4AI as a source
-                    self.research_sources.append(
-                        ResearchSource(
-                            title="Crawl4AI Deep Web Research",
-                            url="https://crawl4ai.io",
-                            content=crawl_research,
-                            source_type="Deep Web Search",
-                            published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        )
-                    )
-                    # Clean up resources
-                    await crawl_searcher.close()
-                
             elif os.getenv("OPENROUTER_API_KEY"):
                 # Fallback to OpenRouter with similar configuration
                 model = GeneralLlm(
@@ -228,26 +209,6 @@ class MainBot(Q1TemplateBot2025):
                     published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 )
             )
-            
-        if os.getenv("CRAWL4AI_API_KEY"):
-            crawl_searcher = Crawl4AISearcher()
-            try:
-                crawl_research = await crawl_searcher.get_formatted_search_results_async(question.question_text)
-                research_parts.append(crawl_research)
-                
-                # Add Crawl4AI as a source
-                self.research_sources.append(
-                    ResearchSource(
-                        title="Crawl4AI Deep Web Research",
-                        url="https://crawl4ai.io",
-                        content=crawl_research,
-                        source_type="Deep Web Search",
-                        published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    )
-                )
-            finally:
-                # Ensure resources are cleaned up even if an error occurs
-                await crawl_searcher.close()
         
         return "\n\n".join(research_parts) if research_parts else ""
 
