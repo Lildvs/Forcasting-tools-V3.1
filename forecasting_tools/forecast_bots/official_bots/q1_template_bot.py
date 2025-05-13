@@ -19,13 +19,16 @@ from forecasting_tools.data_models.questions import (
     NumericQuestion,
 )
 from forecasting_tools.forecast_bots.forecast_bot import ForecastBot
-from forecasting_tools.forecast_helpers.asknews_searcher import AskNewsSearcher
 from forecasting_tools.forecast_helpers.metaculus_api import MetaculusApi
 from forecasting_tools.forecast_helpers.prediction_extractor import (
     PredictionExtractor,
 )
 from forecasting_tools.forecast_helpers.smart_searcher import SmartSearcher
-from forecasting_tools.forecast_bots.official_bots.forecaster_assumptions import FORECASTER_THOUGHT_PROCESS
+from forecasting_tools.forecast_bots.official_bots.forecaster_assumptions import (
+    FORECASTER_THOUGHT_PROCESS, 
+    format_advanced_prompting_template,
+    get_core_principle
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,11 +67,7 @@ class Q1TemplateBot2025(ForecastBot):
     async def run_research(self, question: MetaculusQuestion) -> str:
         async with self._concurrency_limiter:
             research = ""
-            if os.getenv("ASKNEWS_CLIENT_ID") and os.getenv("ASKNEWS_SECRET"):
-                research = await AskNewsSearcher().get_formatted_news_async(
-                    question.question_text
-                )
-            elif os.getenv("EXA_API_KEY"):
+            if os.getenv("EXA_API_KEY"):
                 research = await self._call_exa_smart_searcher(
                     question.question_text
                 )
@@ -135,16 +134,19 @@ class Q1TemplateBot2025(ForecastBot):
     ) -> ReasonedPrediction[float]:
         # Format the thought process
         thought_process = "\n".join([
-            f"{i+1}. {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["priority_steps"])
+            f"{i+1}. {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["priority_chain_of_thought"]["steps"])
         ])
         
         base_assumptions = "\n".join([
-            f"- {assumption}" for assumption in FORECASTER_THOUGHT_PROCESS["base_assumptions"]
+            f"- {assumption}" for assumption in FORECASTER_THOUGHT_PROCESS["forecasting_principles"]["epistemological"]
         ])
         
         analysis_steps = "\n".join([
-            f"({chr(97+i)}) {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["analysis_framework"]["binary"])
+            f"({chr(97+i)}) {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["scenario_analysis"]["binary"]["scenarios"].values())
         ])
+        
+        # Get the advanced prompting template
+        advanced_prompting = format_advanced_prompting_template("binary")
 
         prompt = clean_indents(
             f"""
@@ -171,10 +173,12 @@ class Q1TemplateBot2025(ForecastBot):
 
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
+            {advanced_prompting}
+
             Before answering you write:
             {analysis_steps}
 
-            {FORECASTER_THOUGHT_PROCESS["core_principles"][0]}
+            {get_core_principle(0)}
 
             The last thing you write is your final answer as: "{FORECASTER_THOUGHT_PROCESS["output_formats"]["binary"]}", 0-100
             """
@@ -195,16 +199,19 @@ class Q1TemplateBot2025(ForecastBot):
     ) -> ReasonedPrediction[PredictedOptionList]:
         # Format the thought process
         thought_process = "\n".join([
-            f"{i+1}. {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["priority_steps"])
+            f"{i+1}. {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["priority_chain_of_thought"]["steps"])
         ])
         
         base_assumptions = "\n".join([
-            f"- {assumption}" for assumption in FORECASTER_THOUGHT_PROCESS["base_assumptions"]
+            f"- {assumption}" for assumption in FORECASTER_THOUGHT_PROCESS["forecasting_principles"]["epistemological"]
         ])
         
         analysis_steps = "\n".join([
-            f"({chr(97+i)}) {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["analysis_framework"]["multiple_choice"])
+            f"({chr(97+i)}) {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["scenario_analysis"]["multiple_choice"]["scenarios"].values())
         ])
+        
+        # Get the advanced prompting template
+        advanced_prompting = format_advanced_prompting_template("multiple_choice")
 
         prompt = clean_indents(
             f"""
@@ -232,10 +239,13 @@ class Q1TemplateBot2025(ForecastBot):
 
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
+            {advanced_prompting}
+
             Before answering you write:
             {analysis_steps}
 
-            {FORECASTER_THOUGHT_PROCESS["core_principles"][2]}
+            {get_core_principle(0)}
+            {get_core_principle(2)}
 
             The last thing you write is your final probabilities for the N options in this order {question.options} as:
             {FORECASTER_THOUGHT_PROCESS["output_formats"]["multiple_choice"]}
@@ -248,7 +258,7 @@ class Q1TemplateBot2025(ForecastBot):
             )
         )
         logger.info(
-            f"Forecasted URL {question.page_url} as {prediction} with reasoning:\n{reasoning}"
+            f"Forecasted URL {question.page_url} with prediction: {prediction}"
         )
         return ReasonedPrediction(
             prediction_value=prediction, reasoning=reasoning
@@ -263,17 +273,20 @@ class Q1TemplateBot2025(ForecastBot):
         
         # Format the thought process
         thought_process = "\n".join([
-            f"{i+1}. {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["priority_steps"])
+            f"{i+1}. {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["priority_chain_of_thought"]["steps"])
         ])
         
         base_assumptions = "\n".join([
-            f"- {assumption}" for assumption in FORECASTER_THOUGHT_PROCESS["base_assumptions"]
+            f"- {assumption}" for assumption in FORECASTER_THOUGHT_PROCESS["forecasting_principles"]["epistemological"]
         ])
         
         analysis_steps = "\n".join([
-            f"({chr(97+i)}) {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["analysis_framework"]["numeric"])
+            f"({chr(97+i)}) {step}" for i, step in enumerate(FORECASTER_THOUGHT_PROCESS["scenario_analysis"]["numeric"]["scenarios"].values())
         ])
-
+        
+        # Get the advanced prompting template
+        advanced_prompting = format_advanced_prompting_template("numeric")
+        
         prompt = clean_indents(
             f"""
             You are a professional forecaster interviewing for a job. As an interviewee your train-of-thought is as follows:
@@ -293,36 +306,39 @@ class Q1TemplateBot2025(ForecastBot):
 
             {question.fine_print}
 
+            Units for answer: {question.unit_of_measure if question.unit_of_measure else "Not stated (please infer this)"}
+
+            {lower_bound_message}
+
+            {upper_bound_message}
+
             Your research assistant says:
             {research}
 
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
-            {lower_bound_message}
-            {upper_bound_message}
-
-            Formatting Instructions:
-            - Please notice the units requested (e.g. whether you represent a number as 1,000,000 or 1m).
-            - Never use scientific notation.
-            - Always start with a smaller number (more negative if negative) and then increase from there
+            {advanced_prompting}
+            
+            You should provide a probability distribution over a range of outcomes. For example, if you're 90% confident the true answer will be between 70 and 110, and 50% confident the answer will be between 85 and 95, your output should include those percentiles.
 
             Before answering you write:
             {analysis_steps}
 
-            {FORECASTER_THOUGHT_PROCESS["core_principles"][1]}
+            {get_core_principle(1)}
 
-            The last thing you write is your final answer as:
+            The last thing you write is your final percentiles for the outcome. You always give the 1st, 10th, 25th, 50th, 75th, 90th, and 99th percentiles. Each percentile is given in the format:
             {FORECASTER_THOUGHT_PROCESS["output_formats"]["numeric"]}
             """
         )
         reasoning = await self.get_llm("default", "llm").invoke(prompt)
+        # We need to extract both the prediction values, and the reasoning
         prediction: NumericDistribution = (
-            PredictionExtractor.extract_numeric_distribution_from_list_of_percentile_number_and_probability(
-                reasoning, question
+            PredictionExtractor.extract_percentiles_with_values(
+                reasoning, question.bounds
             )
         )
         logger.info(
-            f"Forecasted URL {question.page_url} as {prediction.declared_percentiles} with reasoning:\n{reasoning}"
+            f"Forecasted URL {question.page_url} with prediction: {prediction}"
         )
         return ReasonedPrediction(
             prediction_value=prediction, reasoning=reasoning

@@ -18,12 +18,16 @@ from forecasting_tools.data_models.questions import (
     NumericQuestion,
 )
 from forecasting_tools.forecast_bots.forecast_bot import ForecastBot
-from forecasting_tools.forecast_helpers.asknews_searcher import AskNewsSearcher
 from forecasting_tools.forecast_helpers.metaculus_api import MetaculusApi
 from forecasting_tools.forecast_helpers.prediction_extractor import (
     PredictionExtractor,
 )
 from forecasting_tools.forecast_helpers.smart_searcher import SmartSearcher
+from forecasting_tools.forecast_bots.official_bots.forecaster_assumptions import (
+    FORECASTER_THOUGHT_PROCESS,
+    format_advanced_prompting_template,
+    get_core_principle
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +35,6 @@ logger = logging.getLogger(__name__)
 class Q2TemplateBot2025(ForecastBot):
     """
     This is a copy of the template bot for Q2 2025 Metaculus AI Tournament.
-    The official bots on the leaderboard use AskNews in Q2.
     Main template bot changes since Q1
     - Support for new units parameter was added
     - You now set your llms when you initialize the bot (making it easier to switch between and benchmark different models)
@@ -81,22 +84,6 @@ class Q2TemplateBot2025(ForecastBot):
 
             if isinstance(researcher, GeneralLlm):
                 research = await researcher.invoke(prompt)
-            elif researcher == "asknews/news-summaries":
-                research = await AskNewsSearcher().get_formatted_news_async(
-                    question.question_text
-                )
-            elif researcher == "asknews/deep-research/medium-depth":
-                research = await AskNewsSearcher().get_formatted_deep_research(
-                    question.question_text,
-                    search_depth=2,
-                    max_depth=2,
-                )
-            elif researcher == "asknews/deep-research/high-depth":
-                research = await AskNewsSearcher().get_formatted_deep_research(
-                    question.question_text,
-                    search_depth=5,
-                    max_depth=8,
-                )
             elif researcher.startswith("smart-searcher"):
                 model_name = researcher.removeprefix("smart-searcher/")
                 searcher = SmartSearcher(
@@ -121,6 +108,9 @@ class Q2TemplateBot2025(ForecastBot):
     async def _run_forecast_on_binary(
         self, question: BinaryQuestion, research: str
     ) -> ReasonedPrediction[float]:
+        # Get the advanced prompting template
+        advanced_prompting = format_advanced_prompting_template("binary")
+        
         prompt = clean_indents(
             f"""
             You are a professional forecaster interviewing for a job.
@@ -143,13 +133,15 @@ class Q2TemplateBot2025(ForecastBot):
 
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
+            {advanced_prompting}
+
             Before answering you write:
             (a) The time left until the outcome to the question is known.
             (b) The status quo outcome if nothing changed.
             (c) A brief description of a scenario that results in a No outcome.
             (d) A brief description of a scenario that results in a Yes outcome.
 
-            You write your rationale remembering that good forecasters put extra weight on the status quo outcome since the world changes slowly most of the time.
+            You write your rationale remembering that {get_core_principle(0).lower()}
 
             The last thing you write is your final answer as: "Probability: ZZ%", 0-100
             """
@@ -169,6 +161,9 @@ class Q2TemplateBot2025(ForecastBot):
     async def _run_forecast_on_multiple_choice(
         self, question: MultipleChoiceQuestion, research: str
     ) -> ReasonedPrediction[PredictedOptionList]:
+        # Get the advanced prompting template
+        advanced_prompting = format_advanced_prompting_template("multiple_choice")
+        
         prompt = clean_indents(
             f"""
             You are a professional forecaster interviewing for a job.
@@ -192,12 +187,14 @@ class Q2TemplateBot2025(ForecastBot):
 
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
+            {advanced_prompting}
+
             Before answering you write:
             (a) The time left until the outcome to the question is known.
             (b) The status quo outcome if nothing changed.
             (c) A description of an scenario that results in an unexpected outcome.
 
-            You write your rationale remembering that (1) good forecasters put extra weight on the status quo outcome since the world changes slowly most of the time, and (2) good forecasters leave some moderate probability on most options to account for unexpected outcomes.
+            You write your rationale remembering that (1) {get_core_principle(0).lower()}, and (2) {get_core_principle(2).lower()}
 
             The last thing you write is your final probabilities for the N options in this order {question.options} as:
             Option_A: Probability_A
@@ -226,6 +223,10 @@ class Q2TemplateBot2025(ForecastBot):
         upper_bound_message, lower_bound_message = (
             self._create_upper_and_lower_bound_messages(question)
         )
+        
+        # Get the advanced prompting template
+        advanced_prompting = format_advanced_prompting_template("numeric")
+        
         prompt = clean_indents(
             f"""
             You are a professional forecaster interviewing for a job.
@@ -248,12 +249,12 @@ class Q2TemplateBot2025(ForecastBot):
             Today is {datetime.now().strftime("%Y-%m-%d")}.
 
             {lower_bound_message}
+
             {upper_bound_message}
 
-            Formatting Instructions:
-            - Please notice the units requested (e.g. whether you represent a number as 1,000,000 or 1 million).
-            - Never use scientific notation.
-            - Always start with a smaller number (more negative if negative) and then increase from there
+            {advanced_prompting}
+
+            You should provide a probability distribution over a range of outcomes. For example, if you're 90% confident the true answer will be between 70 and 110, and 50% confident the answer will be between 85 and 95, your output should include those percentiles.
 
             Before answering you write:
             (a) The time left until the outcome to the question is known.
@@ -263,28 +264,22 @@ class Q2TemplateBot2025(ForecastBot):
             (e) A brief description of an unexpected scenario that results in a low outcome.
             (f) A brief description of an unexpected scenario that results in a high outcome.
 
-            You remind yourself that good forecasters are humble and set wide 90/10 confidence intervals to account for unknown unknowns.
+            After those points, you write your rationale, remembering that {get_core_principle(1).lower()}
 
-            The last thing you write is your final answer as:
-            "
-            Percentile 10: XX
-            Percentile 20: XX
-            Percentile 40: XX
-            Percentile 60: XX
-            Percentile 80: XX
-            Percentile 90: XX
-            "
+            The last thing you write is your final percentiles for the outcome. You always give the 1st, 10th, 25th, 50th, 75th, 90th, and 99th percentiles. Each percentile is given in the format:
+            Percentile XX: YY
             """
         )
         reasoning = await self.get_llm("default", "llm").invoke(prompt)
         logger.info(f"Reasoning for URL {question.page_url}: {reasoning}")
+        # We need to extract both the prediction values, and the reasoning
         prediction: NumericDistribution = (
-            PredictionExtractor.extract_numeric_distribution_from_list_of_percentile_number_and_probability(
-                reasoning, question
+            PredictionExtractor.extract_percentiles_with_values(
+                reasoning, question.bounds
             )
         )
         logger.info(
-            f"Forecasted URL {question.page_url} with prediction: {prediction.declared_percentiles}"
+            f"Forecasted URL {question.page_url} with prediction: {prediction}"
         )
         return ReasonedPrediction(
             prediction_value=prediction, reasoning=reasoning
@@ -293,18 +288,11 @@ class Q2TemplateBot2025(ForecastBot):
     def _create_upper_and_lower_bound_messages(
         self, question: NumericQuestion
     ) -> tuple[str, str]:
-        if question.open_upper_bound:
-            upper_bound_message = ""
-        else:
-            upper_bound_message = (
-                f"The outcome can not be higher than {question.upper_bound}."
-            )
-        if question.open_lower_bound:
-            lower_bound_message = ""
-        else:
-            lower_bound_message = (
-                f"The outcome can not be lower than {question.lower_bound}."
-            )
+        lower_bound_message, upper_bound_message = "", ""
+        if question.has_lower_bound:
+            lower_bound_message = f"The question has a lower bound of {question.bounds.lower_bound}."
+        if question.has_upper_bound:
+            upper_bound_message = f"The question has an upper bound of {question.bounds.upper_bound}."
         return upper_bound_message, lower_bound_message
 
 
@@ -340,7 +328,7 @@ if __name__ == "__main__":
     ], "Invalid run mode"
 
     template_bot = Q2TemplateBot2025(
-        research_reports_per_question=1,
+        research_reports_per_question=5,
         predictions_per_research_report=5,
         use_research_summary_to_forecast=False,
         publish_reports_to_metaculus=True,

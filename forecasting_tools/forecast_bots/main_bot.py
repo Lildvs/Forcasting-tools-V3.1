@@ -13,7 +13,6 @@ from forecasting_tools.forecast_bots.official_bots.forecaster_assumptions import
     FORECASTER_THOUGHT_PROCESS,
     FORCASTER_DATA_COLLECTION_AND_ANALYSIS
 )
-from forecasting_tools.forecast_helpers.asknews_searcher import AskNewsSearcher
 from forecasting_tools.forecast_helpers.crawl4ai_searcher import Crawl4AISearcher
 from forecasting_tools.forecast_helpers.browser_searcher import BrowserSearcher
 
@@ -88,7 +87,7 @@ class MainBot(Q1TemplateBot2025):
                     reasoning_effort="high"
                 )
                 
-                # Determine the appropriate analysis framework based on question type
+                # Format the appropriate analysis framework based on question type
                 framework_type = "binary"  # default
                 if hasattr(question, 'question_type'):
                     if question.question_type == "multiple_choice":
@@ -96,7 +95,18 @@ class MainBot(Q1TemplateBot2025):
                     elif question.question_type == "numeric":
                         framework_type = "numeric"
                 
-                # Format the research prompt using our templates
+                # Format the scenario analysis as a list for compatibility
+                scenario_analysis = []
+                for name, scenario in FORECASTER_THOUGHT_PROCESS["scenario_analysis"][framework_type]["scenarios"].items():
+                    scenario_analysis.append(f"{name.replace('_', ' ').title()}: {scenario['description']}")
+                formatted_scenario_analysis = "\n".join(scenario_analysis)
+                
+                # Format the epistemological principles as bullet points
+                epistemological_principles = "\n".join([
+                    f"- {principle}" for principle in FORECASTER_THOUGHT_PROCESS["forecasting_principles"]["epistemological"]
+                ])
+                
+                # Format the prompt
                 prompt = clean_indents(
                     f"""
                     You are an assistant to a superforecaster.
@@ -123,10 +133,10 @@ class MainBot(Q1TemplateBot2025):
                     Idea Generation: {FORCASTER_DATA_COLLECTION_AND_ANALYSIS["Idea Generation"]}
 
                     Using the following analysis framework:
-                    {FORECASTER_THOUGHT_PROCESS["analysis_framework"][framework_type]}
+                    {formatted_scenario_analysis}
 
                     And considering these base assumptions:
-                    {FORECASTER_THOUGHT_PROCESS["base_assumptions"]}
+                    {epistemological_principles}
                     """
                 )
                 
@@ -148,10 +158,6 @@ class MainBot(Q1TemplateBot2025):
                 if os.getenv("EXA_API_KEY"):
                     exa_research = await self._call_exa_smart_searcher(question.question_text)
                     research = f"{research}\n\nAdditional Research:\n{exa_research}"
-                
-                if os.getenv("ASKNEWS_CLIENT_ID") and os.getenv("ASKNEWS_SECRET"):
-                    news_research = await AskNewsSearcher().get_formatted_news_async(question.question_text)
-                    research = f"{research}\n\nNews Analysis:\n{news_research}"
                 
                 if os.getenv("CRAWL4AI_API_KEY"):
                     try:
@@ -255,21 +261,6 @@ class MainBot(Q1TemplateBot2025):
                     url="https://exa.ai",
                     content=exa_research,
                     source_type="Web Search",
-                    published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                )
-            )
-        
-        if os.getenv("ASKNEWS_CLIENT_ID") and os.getenv("ASKNEWS_SECRET"):
-            news_research = await AskNewsSearcher().get_formatted_news_async(question.question_text)
-            research_parts.append(news_research)
-            
-            # Add AskNews as a source
-            self.research_sources.append(
-                ResearchSource(
-                    title="AskNews Results",
-                    url="https://asknews.app",
-                    content=news_research,
-                    source_type="News Search",
                     published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 )
             )
