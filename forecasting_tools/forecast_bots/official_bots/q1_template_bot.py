@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 class Q1TemplateBot2025(ForecastBot):
     """
     This is a copy of the template bot for Q1 2025 Metaculus AI Tournament.
-    The official bots on the leaderboard use AskNews in Q1.
+    The official bots use advanced search techniques for accurate forecasting.
 
     The main entry point of this bot is `forecast_on_tournament` in the parent class.
     However generally the flow is:
