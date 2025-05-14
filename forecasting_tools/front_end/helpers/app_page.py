@@ -57,12 +57,12 @@ class AppPage(ABC):
         st.markdown("---")
         st.write(
             "This is the demo site for: "
-            "https://github.com/Lildvs/Forcasting-tools-V3"
+            "https://github.com/Lildvs/Forcasting-tools-V3 or what ever the lastes version is."
         )
         st.write(
-            "Thank you to the Metaculus team for the opportunity to join this tournament! "
+            "Thank you to the Metaculus team for the template and the opportunity to join this tournament! "
             "Please give feedback on the [Forecasting Tools Discord](https://discord.gg/Dtq4JNdXnw). "
-            "Shoutout to Lex Fridman, God speed sir."
+            "Shoutout to The Fridman, God speed sir!"
         )
         st.write(
             "Queries made to the website are saved to a database and may be "
