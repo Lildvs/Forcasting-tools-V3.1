@@ -92,9 +92,6 @@ from forecasting_tools.forecast_bots.official_bots.q4_template_bot import (
 from forecasting_tools.forecast_bots.template_bot import (
     TemplateBot as TemplateBot,
 )
-from forecasting_tools.forecast_helpers.asknews_searcher import (
-    AskNewsSearcher as AskNewsSearcher,
-)
 from forecasting_tools.forecast_helpers.benchmark_displayer import (
     run_benchmark_streamlit_page as run_benchmark_streamlit_page,
 )
