@@ -862,8 +862,8 @@ class ForecastBot(ABC):
             )
         elif os.getenv("EXA_API_KEY"):
             researcher = f"smart-searcher/{main_default_llm.model}"
-        elif os.getenv("ASKNEWS_CLIENT_ID") and os.getenv("ASKNEWS_SECRET"):
-            researcher = "asknews/news-summaries"
+        elif os.getenv("SEARCH_API_KEY"):
+            researcher = "perplexity/search-basic"
         else:
             researcher = GeneralLlm(
                 model="perplexity/sonar-pro", temperature=0.1
