@@ -7,6 +7,7 @@ license = "MIT"
 readme = "README.md"
 keywords = ["ai", "forecasting", "research", "metaculus", "prediction", "future", "market"]
 repository = "https://github.com/Metaculus/forecasting-tools"
+packages = [{include = "forecasting_tools"}]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
@@ -15,6 +16,9 @@ classifiers = [
     "Natural Language :: English",
     "Operating System :: OS Independent"
 ]
+
+[tool.poetry.scripts]
+forecasting = "forecasting_tools.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.10"
