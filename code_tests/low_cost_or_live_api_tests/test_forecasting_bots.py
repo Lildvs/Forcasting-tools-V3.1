@@ -127,7 +127,7 @@ async def test_works_with_configured_llm() -> None:
 @pytest.mark.parametrize(
     "research_llm",
     [
-        "asknews/news-summaries",
+        "perplexity/search-basic",
         "openrouter/perplexity/sonar",
         GeneralLlm("perplexity/sonar"),
         "smart-searcher/gpt-4o-mini",

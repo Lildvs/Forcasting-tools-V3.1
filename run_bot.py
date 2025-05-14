@@ -76,7 +76,7 @@ async def get_all_bots() -> list[ForecastBot]:
 
 def create_bot(
     llm: GeneralLlm,
-    researcher: str | GeneralLlm = "asknews/news-summaries",
+    researcher: str | GeneralLlm = "perplexity/search-basic",
     predictions_per_research_report: int = 5,
 ) -> ForecastBot:
     default_bot = Q2TemplateBot2025(
@@ -252,7 +252,7 @@ def get_default_bot_dict() -> dict[str, Any]:  # NOSONAR
             "estimated_cost_per_question": None,
             "bot": create_bot(
                 default_deepseek_research_bot_llm,
-                researcher="asknews/deep-research/high-depth",
+                researcher="perplexity/search-deep",
             ),
         },
         "METAC_O3_HIGH_TOKEN": {
@@ -561,33 +561,33 @@ def get_default_bot_dict() -> dict[str, Any]:  # NOSONAR
 
 
 def _make_sure_search_keys_dont_conflict(
-    mode: Literal["asknews-mode", "exa-mode", "perplexity-mode"],
+    mode: Literal["search-mode", "exa-mode", "perplexity-mode"],
 ) -> None:
-    if mode == "asknews-mode":
+    if mode == "search-mode":
         assert not os.getenv(
             "PERPLEXITY_API_KEY"
-        ), "Perplexity API key is set, but it should not be set for asknews-mode"
+        ), "Perplexity API key is set, but it should not be set for search-mode"
         assert not os.getenv(
             "EXA_API_KEY"
-        ), "Exa API key is set, but it should not be set for asknews-mode"
+        ), "Exa API key is set, but it should not be set for search-mode"
         assert os.getenv(
-            "ASKNEWS_SECRET"
-        ), "Asknews secret key is not set for asknews-mode"
+            "SEARCH_API_KEY"
+        ), "Search API key is not set for search-mode"
     elif mode == "exa-mode":
         assert not os.getenv(
             "PERPLEXITY_API_KEY"
         ), "Perplexity API key is set, but it should not be set for exa-mode"
         assert not os.getenv(
-            "ASKNEWS_SECRET"
-        ), "Asknews secret key is set, but it should not be set for exa-mode"
+            "SEARCH_API_KEY"
+        ), "Search API key is set, but it should not be set for exa-mode"
         assert os.getenv("EXA_API_KEY"), "Exa API key is not set for exa-mode"
     elif mode == "perplexity-mode":
         assert not os.getenv(
             "EXA_API_KEY"
         ), "Exa API key is set, but it should not be set for perplexity-mode"
         assert not os.getenv(
-            "ASKNEWS_SECRET"
-        ), "Asknews secret key is set, but it should not be set for perplexity-mode"
+            "SEARCH_API_KEY"
+        ), "Search API key is set, but it should not be set for perplexity-mode"
         assert os.getenv(
             "PERPLEXITY_API_KEY"
         ), "Perplexity API key is not set for perplexity-mode"

@@ -32,7 +32,6 @@ from forecasting_tools.forecast_bots.forecast_bot import ForecastBot
 from forecasting_tools.forecast_bots.official_bots.q1_template_bot import (
     Q1TemplateBot2025,
 )
-from forecasting_tools.forecast_helpers.asknews_searcher import AskNewsSearcher
 from forecasting_tools.forecast_helpers.smart_searcher import SmartSearcher
 from forecasting_tools.util.jsonable import Jsonable
 
@@ -688,9 +687,6 @@ class TopicGenerator:
         if isinstance(model, str):
             model = GeneralLlm(model=model, temperature=1, timeout=40)
 
-        ask_news_results = await AskNewsSearcher().get_formatted_news_async(
-            topic
-        )
         prompt = clean_indents(
             f"""
             # Instructions
@@ -708,9 +704,6 @@ class TopicGenerator:
                 {{"topic": "Chinese officials visit Lebanon to discuss trade", "url": "https://www.tradeinkorea.com/events/chinese-officials-visit-lebanon-to-discuss-trade"}},
             ]
             ```
-
-            # Search results
-            {ask_news_results}
 
             # Final instructions
             Now return a json list of topics please
