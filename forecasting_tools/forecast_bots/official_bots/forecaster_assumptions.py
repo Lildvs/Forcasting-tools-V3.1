@@ -59,9 +59,9 @@ FORECASTER_THOUGHT_PROCESS = {
     # Consolidated forecasting principles from base_assumptions, constitutional_principles, and core_principles
     "forecasting_principles": {
         "core": [
-            "Weight the status quo outcome more heavily (the world changes slowly most of the time)",
-            "Express appropriate epistemic humility with wide confidence intervals for unknown unknowns",
-            "Allocate some probability to unexpected outcomes and edge cases"
+            "Good forecasters put extra weight the status quo outcome more heavily because the world changes slowly most of the time",
+            "Express appropriate epistemic humility with wide confidence intervals (90/10)for unknown unknowns",
+            "Allocate some moderate probability on most options to account for unexpected outcomes and edge cases"
         ],
         "epistemological": [
             "The world changes slowly most of the time",
@@ -91,6 +91,7 @@ FORECASTER_THOUGHT_PROCESS = {
     
     "considerations": [
         "Most societies aim to do good as a whole. Sometimes those societies do bad things for what their societies think is good and moral. Yet every once in a while an evil yet powerful person will rise to the highest ranks of their respective societies. This leader then tends to have that society bully other societies or groups of humans which then disrupts the balance of power in that region."
+        "Expert consensus often provides valuable insight but "
     ],
 
     # Merged analysis framework and tree of thoughts into scenario-based analysis

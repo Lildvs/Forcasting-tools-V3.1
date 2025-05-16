@@ -26,6 +26,7 @@ from forecasting_tools.front_end.app_pages.niche_list_researcher_page import (
 from forecasting_tools.front_end.app_pages.question_generation_page import (
     QuestionGeneratorPage,
 )
+from forecasting_tools.front_end.app_pages.metrics_dashboard_page import MetricsDashboardPage
 from forecasting_tools.front_end.helpers.app_page import AppPage
 from forecasting_tools.util.custom_logger import CustomLogger
 
@@ -50,6 +51,7 @@ class HomePage(AppPage):
         ESTIMATOR_PAGE,
         QUESTION_GENERATION_PAGE,
         METACULUS_CHALLENGE_PAGE,
+        MetricsDashboardPage,
     ]
 
     @classmethod

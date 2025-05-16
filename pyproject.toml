@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "forecasting-tools"
-version = "0.2.37"
+version = "0.2.38"
 description = "AI forecasting and research tools to help humans reason about and forecast the future"
 authors = ["Benjamin Wilson <mokoresearch@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-keywords = ["ai", "forecasting", "research", "metaculus", "prediction", "future", "market"]
+keywords = ["ai", "forecasting", "research", "metaculus", "prediction", "future", "market", "time-series"]
 repository = "https://github.com/Metaculus/forecasting-tools"
 packages = [{include = "forecasting_tools"}]
 classifiers = [
@@ -53,9 +53,13 @@ cattrs = "^23.2.3"
 packaging = "^23.2"
 MarkupSafe = "^2.1.3"
 playwright = "^1.52.0"
+statsmodels = "^0.14.2"
+matplotlib = "^3.9.2"
 
 [tool.poetry.extras]
 guardrails = ["nemoguardrails"]
+timeseries = ["prophet", "tensorflow"]
+backtesting = ["plotly", "matplotlib", "pandas"]
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.0.1"

@@ -1,5 +1,6 @@
 import logging
 import re
+import asyncio
 
 import dotenv
 import streamlit as st
@@ -18,6 +19,7 @@ from forecasting_tools.front_end.helpers.report_displayer import (
 )
 from forecasting_tools.front_end.helpers.tool_page import ToolPage
 from forecasting_tools.util.jsonable import Jsonable
+from forecasting_tools.ai_models.general_llm import GeneralLlm
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,7 @@ class ForecasterPage(ToolPage):
     NUM_BASE_RATE_QUESTIONS_BOX = "num_base_rate_questions_box"
     METACULUS_URL_INPUT = "metaculus_url_input"
     FETCH_BUTTON = "fetch_button"
+    DIRECT_FORECAST_BUTTON = "direct_forecast_button"
 
     @classmethod
     async def _display_intro_text(cls) -> None:
@@ -68,9 +71,13 @@ class ForecasterPage(ToolPage):
                 "Background Info (optional)", key=cls.BACKGROUND_INFO_BOX
             )
 
-            submitted = st.form_submit_button("Submit")
+            col1, col2 = st.columns(2)
+            with col1:
+                submitted = st.form_submit_button("Submit (Full Bot)")
+            with col2:
+                direct_forecast = st.form_submit_button("Quick Forecast (LLM Only)", key=cls.DIRECT_FORECAST_BUTTON)
 
-            if submitted:
+            if submitted or direct_forecast:
                 if not question_text:
                     st.error("Question Text is required.")
                     return None
@@ -82,22 +89,59 @@ class ForecasterPage(ToolPage):
                     page_url="",
                     api_json={},
                 )
-                return ForecastInput(
-                    question=question,
-                )
+                input_obj = ForecastInput(question=question)
+                if direct_forecast:
+                    # Store flag to use direct LLM instead of full bot
+                    st.session_state["use_direct_forecast"] = True
+                else:
+                    st.session_state["use_direct_forecast"] = False
+                return input_obj
         return None
 
     @classmethod
     async def _run_tool(cls, input: ForecastInput) -> BinaryReport:
-        with st.spinner("Analyzing... This may take a minute or two..."):
-            bot = MainBot(
-                research_reports_per_question=3,
-                predictions_per_research_report=5,
-                use_research_summary_to_forecast=False,
-                publish_reports_to_metaculus=False
-            )
-            report = await bot.forecast_question(input.question)
-            return report
+        with st.spinner("Analyzing..."):
+            if st.session_state.get("use_direct_forecast", False):
+                # Use direct LLM forecaster instead of full bot
+                with st.spinner("Getting quick forecast using LLM..."):
+                    # Initialize a forecaster
+                    forecaster = GeneralLlm(
+                        model="openai/o1", temperature=0.2
+                    )
+                    
+                    # Create placeholders to show real-time progress
+                    prob_placeholder = st.empty()
+                    explanation_placeholder = st.empty()
+                    
+                    # Get probability prediction
+                    prob_placeholder.text("Getting probability...")
+                    probability = await forecaster.predict(input.question)
+                    prob_placeholder.text(f"Probability: {probability:.2f}")
+                    
+                    # Get explanation
+                    explanation_placeholder.text("Getting explanation...")
+                    explanation = await forecaster.explain(input.question)
+                    explanation_placeholder.text_area("Explanation:", explanation, height=200)
+                    
+                    # Create a manual report object
+                    report = BinaryReport(
+                        question=input.question,
+                        prediction=probability,
+                        explanation=f"# Summary\n\n{explanation}",
+                        other_notes=None,
+                    )
+                    return report
+            else:
+                # Use full bot pipeline
+                with st.spinner("Running full analysis with research. This may take a minute or two..."):
+                    bot = MainBot(
+                        research_reports_per_question=3,
+                        predictions_per_research_report=5,
+                        use_research_summary_to_forecast=False,
+                        publish_reports_to_metaculus=False
+                    )
+                    report = await bot.forecast_question(input.question)
+                    return report
 
     @classmethod
     async def _display_outputs(cls, outputs: list[BinaryReport]) -> None:

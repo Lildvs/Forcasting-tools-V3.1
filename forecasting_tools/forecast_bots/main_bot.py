@@ -50,6 +50,10 @@ class MainBot(Q1TemplateBot2025):
         )
         self.research_sources: List[ResearchSource] = []
         self.use_browser_automation = use_browser_automation
+        # Initialize forecaster from GeneralLlm
+        self.forecaster = GeneralLlm(
+            model="openai/o1", temperature=0.2
+        )
         # Check if browser automation is available
         if self.use_browser_automation:
             is_available = BrowserSearcher.is_available()
@@ -329,3 +333,29 @@ class MainBot(Q1TemplateBot2025):
                 model="openai/gpt-4o-mini", temperature=0
             ),
         }
+
+    async def _run_forecast_on_binary(
+        self, question: BinaryQuestion, research: str
+    ) -> ReasonedPrediction[float]:
+        # Use the forecaster's predict and explain methods
+        try:
+            # Get the probability from the forecaster
+            prediction = await self.forecaster.predict(question)
+            
+            # Get the explanation
+            reasoning = await self.forecaster.explain(question)
+            
+            # Get confidence interval (optional, for future use)
+            confidence = await self.forecaster.confidence_interval(question)
+            
+            logger.info(
+                f"Forecasted URL {question.page_url} as {prediction} with reasoning:\n{reasoning}"
+            )
+            
+            return ReasonedPrediction(
+                prediction_value=prediction, reasoning=reasoning
+            )
+        except Exception as e:
+            logger.error(f"Error using forecaster: {e}. Falling back to standard method.")
+            # Fall back to the original implementation if the forecaster fails
+            return await super()._run_forecast_on_binary(question, research)

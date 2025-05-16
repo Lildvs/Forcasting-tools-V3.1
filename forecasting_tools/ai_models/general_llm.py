@@ -34,6 +34,7 @@ from forecasting_tools.ai_models.resource_managers.monetary_cost_manager import 
 )
 from forecasting_tools.util import async_batching
 from forecasting_tools.util.misc import raise_for_status_with_additional_info
+from forecasting_tools.ai_models.model_interfaces.forecaster_base import ForecasterBase
 
 logger = logging.getLogger(__name__)
 ModelInputType = str | VisionMessageData | list[dict[str, str]]
@@ -49,6 +50,7 @@ class GeneralLlm(
     TokensIncurCost,
     RetryableModel,
     OutputsText,
+    ForecasterBase,
 ):
     """
     A wrapper around litellm's acompletion function that adds some functionality
@@ -513,3 +515,47 @@ class GeneralLlm(
             if "pro" in model:
                 cost += 0.005  # There is probably more than one search in pro models
         return cost
+
+    async def predict(self, question, context=None):
+        """
+        Use the LLM to generate a probability forecast for the question.
+        Returns a float between 0 and 1.
+        """
+        prompt = f"Given the following question, what is your probability (as a number between 0 and 1) that the answer is YES?\n\nQuestion: {question.question_text}\nRespond with only a number between 0 and 1."
+        response = await self.invoke(prompt)
+        try:
+            probability = float(response.strip())
+            probability = max(0.0, min(1.0, probability))
+        except Exception:
+            probability = 0.5  # fallback
+        return probability
+
+    async def explain(self, question, context=None):
+        """
+        Use the LLM to generate a rationale for the forecast.
+        Returns a string explanation.
+        """
+        prompt = f"Explain your reasoning for the following forecasted question.\n\nQuestion: {question.question_text}"
+        rationale = await self.invoke(prompt)
+        return rationale.strip()
+
+    async def confidence_interval(self, question, context=None):
+        """
+        Use the LLM to estimate a confidence interval for the probability forecast.
+        Returns a tuple (lower, upper).
+        """
+        prompt = (
+            f"Given the following question, what is your 80% confidence interval for the probability that the answer is YES? "
+            f"Respond with two numbers between 0 and 1, separated by a comma, representing the lower and upper bounds.\n\nQuestion: {question.question_text}"
+        )
+        response = await self.invoke(prompt)
+        try:
+            parts = response.strip().replace('%','').replace('to',',').split(',')
+            lower = float(parts[0])
+            upper = float(parts[1])
+            lower, upper = max(0.0, min(1.0, lower)), max(0.0, min(1.0, upper))
+            if lower > upper:
+                lower, upper = upper, lower
+        except Exception:
+            lower, upper = 0.4, 0.6  # fallback
+        return (lower, upper)
