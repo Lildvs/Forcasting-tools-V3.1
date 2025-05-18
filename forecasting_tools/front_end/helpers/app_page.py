@@ -57,7 +57,7 @@ class AppPage(ABC):
         st.markdown("---")
         st.write(
             "This is the demo site for: "
-            "https://github.com/Lildvs/Forcasting-tools-V3 or what ever the lastes version is."
+            "https://github.com/Lildvs/Forcasting-tools-V4 or what ever the lastes version is."
         )
         st.write(
             "Thank you to the Metaculus team for the template and the opportunity to join this tournament! "
