@@ -42,72 +42,66 @@ class ForecasterPage(ToolPage):
     STATE_BACKGROUND_INFO = "background_info_state"
     STATE_USE_DIRECT_FORECAST = "use_direct_forecast_state"
     STATE_READY_TO_FORECAST = "ready_to_forecast_state"
+    STATE_METACULUS_URL = "metaculus_url_state"
+    STATE_FETCH_CLICKED = "fetch_clicked_state"
 
     @classmethod
     async def _display_intro_text(cls) -> None:
-        # st.write(
-        #     "Enter the information for your question. Exa.ai is used to gather up to date information. Each citation attempts to link to a highlight of the a ~4 sentence quote found with Exa.ai. This project is in beta some inaccuracies are expected."
-        # )
         pass
 
     @classmethod
     async def _get_input(cls) -> ForecastInput | None:
         # Initialize session state variables if they don't exist
-        if cls.STATE_QUESTION_TEXT not in st.session_state:
-            st.session_state[cls.STATE_QUESTION_TEXT] = ""
-        if cls.STATE_RESOLUTION_CRITERIA not in st.session_state:
-            st.session_state[cls.STATE_RESOLUTION_CRITERIA] = ""
-        if cls.STATE_FINE_PRINT not in st.session_state:
-            st.session_state[cls.STATE_FINE_PRINT] = ""
-        if cls.STATE_BACKGROUND_INFO not in st.session_state:
-            st.session_state[cls.STATE_BACKGROUND_INFO] = ""
-        if cls.STATE_USE_DIRECT_FORECAST not in st.session_state:
-            st.session_state[cls.STATE_USE_DIRECT_FORECAST] = False
-        if cls.STATE_READY_TO_FORECAST not in st.session_state:
-            st.session_state[cls.STATE_READY_TO_FORECAST] = False
+        for state_key in [
+            cls.STATE_QUESTION_TEXT, 
+            cls.STATE_RESOLUTION_CRITERIA, 
+            cls.STATE_FINE_PRINT, 
+            cls.STATE_BACKGROUND_INFO, 
+            cls.STATE_METACULUS_URL
+        ]:
+            if state_key not in st.session_state:
+                st.session_state[state_key] = ""
+                
+        for state_key in [
+            cls.STATE_USE_DIRECT_FORECAST, 
+            cls.STATE_READY_TO_FORECAST,
+            cls.STATE_FETCH_CLICKED
+        ]:
+            if state_key not in st.session_state:
+                st.session_state[state_key] = False
             
         # Display Metaculus URL input
         with st.expander("Use an existing Metaculus Binary question"):
-            st.write(
-                "Enter a Metaculus question URL to autofill the form below."
-            )
+            st.write("Enter a Metaculus question URL to autofill the form below.")
 
-            # Session state for Metaculus URL input
-            if "metaculus_url_input" not in st.session_state:
-                st.session_state["metaculus_url_input"] = ""
-            if "fetch_button_clicked" not in st.session_state:
-                st.session_state["fetch_button_clicked"] = False
-                
-            # Define callbacks
+            # Define callback for Metaculus URL input
             def update_metaculus_url():
-                st.session_state["metaculus_url_input"] = st.session_state.metaculus_url
+                st.session_state[cls.STATE_METACULUS_URL] = st.session_state.metaculus_url_input
                 
             def on_fetch_click():
-                st.session_state["fetch_button_clicked"] = True
+                st.session_state[cls.STATE_FETCH_CLICKED] = True
 
             # Input field with callback
             metaculus_url = st.text_input(
                 "Metaculus Question URL",
-                value=st.session_state["metaculus_url_input"],
-                key="metaculus_url",
+                value=st.session_state[cls.STATE_METACULUS_URL],
+                key="metaculus_url_input",
                 on_change=update_metaculus_url
             )
             
-            # Button with callback
-            if st.button("Fetch Question", on_click=on_fetch_click):
-                pass
+            # Simple button with callback
+            st.button("Fetch Question", on_click=on_fetch_click)
                 
             # Process fetch button click
-            if st.session_state["fetch_button_clicked"] and metaculus_url:
+            if st.session_state[cls.STATE_FETCH_CLICKED] and st.session_state[cls.STATE_METACULUS_URL]:
                 # Reset the flag
-                st.session_state["fetch_button_clicked"] = False
+                st.session_state[cls.STATE_FETCH_CLICKED] = False
                 
                 with st.spinner("Fetching question details..."):
                     try:
-                        question_id = cls.__extract_question_id(metaculus_url)
-                        metaculus_question = (
-                            MetaculusApi.get_question_by_post_id(question_id)
-                        )
+                        question_id = cls.__extract_question_id(st.session_state[cls.STATE_METACULUS_URL])
+                        metaculus_question = MetaculusApi.get_question_by_post_id(question_id)
+                        
                         if isinstance(metaculus_question, BinaryQuestion):
                             # Store the question data in session state
                             st.session_state[cls.STATE_QUESTION_TEXT] = metaculus_question.question_text
@@ -117,15 +111,13 @@ class ForecasterPage(ToolPage):
                             st.success("Question fetched successfully!")
                             st.experimental_rerun()
                         else:
-                            st.error(
-                                "Only binary questions are supported at this time."
-                            )
+                            st.error("Only binary questions are supported at this time.")
                     except Exception as e:
                         st.error(
                             f"An error occurred while fetching the question: {e.__class__.__name__}: {e}"
                         )
         
-        # Main input fields (not in a form)
+        # Main input fields section
         st.subheader("Question Details")
         
         # Use callback functions to update session state
@@ -174,22 +166,23 @@ class ForecasterPage(ToolPage):
             on_change=update_background_info
         )
         
-        # Submit buttons (outside of forms)
+        # Submit buttons section
+        def on_full_forecast_click():
+            st.session_state[cls.STATE_USE_DIRECT_FORECAST] = False
+            st.session_state[cls.STATE_READY_TO_FORECAST] = True
+            
+        def on_quick_forecast_click():
+            st.session_state[cls.STATE_USE_DIRECT_FORECAST] = True
+            st.session_state[cls.STATE_READY_TO_FORECAST] = True
+        
+        # Create a two-column layout for buttons
         col1, col2 = st.columns(2)
         
         with col1:
-            full_forecast_button = st.button("Submit (Full Bot)")
-            if full_forecast_button:
-                st.session_state[cls.STATE_USE_DIRECT_FORECAST] = False
-                st.session_state[cls.STATE_READY_TO_FORECAST] = True
-                st.experimental_rerun()
+            st.button("Submit (Full Bot)", on_click=on_full_forecast_click)
         
         with col2:
-            quick_forecast_button = st.button("Quick Forecast (LLM Only)")
-            if quick_forecast_button:
-                st.session_state[cls.STATE_USE_DIRECT_FORECAST] = True
-                st.session_state[cls.STATE_READY_TO_FORECAST] = True
-                st.experimental_rerun()
+            st.button("Quick Forecast (LLM Only)", on_click=on_quick_forecast_click)
         
         # Check if ready to forecast
         if st.session_state[cls.STATE_READY_TO_FORECAST]:
