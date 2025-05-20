@@ -213,7 +213,7 @@ class ScenarioAnalysisPage(ToolPage):
                     st.write(f"Value: {factor['value']:.2f}")
                 
                 with col3:
-                    if st.button("Remove", key=f"remove_{i}"):
+                    if st.button("Remove"):
                         st.session_state.key_factors.pop(i)
                         st.rerun()
         

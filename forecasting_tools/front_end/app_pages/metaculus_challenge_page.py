@@ -193,7 +193,7 @@ class MetaculusChallengePage(ToolPage):
                 if (os.environ.get('METACULUS_USERNAME') and 
                     os.environ.get('METACULUS_PASSWORD') and 
                     not os.environ.get('METACULUS_TOKEN')):
-                    if st.button("Generate Token", key="generate_token_button"):
+                    if st.button("Generate Token"):
                         st.info("Generating token...")
                         username = os.environ.get('METACULUS_USERNAME', '')
                         password = os.environ.get('METACULUS_PASSWORD', '')

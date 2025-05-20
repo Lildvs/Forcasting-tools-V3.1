@@ -82,7 +82,7 @@ class ActiveLearningPage(ToolPage):
             )
         
         with col3:
-            refresh = st.button("Refresh Queue", key=cls.REFRESH_BUTTON)
+            refresh = st.button("Refresh Queue")
         
         # Get flagged questions
         flagged_questions = active_learning_manager.get_flagged_questions(limit=batch_size)
@@ -137,7 +137,7 @@ class ActiveLearningPage(ToolPage):
                     st.progress(importance, text=f"Importance: {importance:.2f}")
                 
                 # Add a button to select this question for review
-                if st.button(f"Review this question", key=f"select_{question_id}"):
+                if st.button(f"Review this question"):
                     selected_question = question
                     st.session_state["selected_question"] = question
         

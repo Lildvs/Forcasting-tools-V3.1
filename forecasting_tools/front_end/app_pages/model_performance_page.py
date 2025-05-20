@@ -172,7 +172,7 @@ class ModelPerformancePage(ToolPage):
                         }
                     )
             
-            if st.button("Export Leaderboard", key="export_leaderboard"):
+            if st.button("Export Leaderboard"):
                 if not leaderboard_df.empty:
                     csv = leaderboard_df.to_csv(index=False)
                     st.download_button(
