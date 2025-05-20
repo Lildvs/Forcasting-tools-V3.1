@@ -36,8 +36,12 @@ class ForecasterPage(ToolPage):
     EXAMPLES_FILE_PATH = "forecasting_tools/front_end/example_outputs/forecast_page_examples.json"
 
     # Define constants for session state keys
-    DIRECT_FORECAST_MODE = "direct_forecast_mode"
-    METACULUS_QUESTION = "metaculus_question"
+    STATE_QUESTION_TEXT = "question_text_state"
+    STATE_RESOLUTION_CRITERIA = "resolution_criteria_state"
+    STATE_FINE_PRINT = "fine_print_state"
+    STATE_BACKGROUND_INFO = "background_info_state"
+    STATE_USE_DIRECT_FORECAST = "use_direct_forecast_state"
+    STATE_READY_TO_FORECAST = "ready_to_forecast_state"
 
     @classmethod
     async def _display_intro_text(cls) -> None:
@@ -48,6 +52,20 @@ class ForecasterPage(ToolPage):
 
     @classmethod
     async def _get_input(cls) -> ForecastInput | None:
+        # Initialize session state variables if they don't exist
+        if cls.STATE_QUESTION_TEXT not in st.session_state:
+            st.session_state[cls.STATE_QUESTION_TEXT] = ""
+        if cls.STATE_RESOLUTION_CRITERIA not in st.session_state:
+            st.session_state[cls.STATE_RESOLUTION_CRITERIA] = ""
+        if cls.STATE_FINE_PRINT not in st.session_state:
+            st.session_state[cls.STATE_FINE_PRINT] = ""
+        if cls.STATE_BACKGROUND_INFO not in st.session_state:
+            st.session_state[cls.STATE_BACKGROUND_INFO] = ""
+        if cls.STATE_USE_DIRECT_FORECAST not in st.session_state:
+            st.session_state[cls.STATE_USE_DIRECT_FORECAST] = False
+        if cls.STATE_READY_TO_FORECAST not in st.session_state:
+            st.session_state[cls.STATE_READY_TO_FORECAST] = False
+            
         # Display Metaculus URL input
         with st.expander("Use an existing Metaculus Binary question"):
             st.write(
@@ -65,9 +83,13 @@ class ForecasterPage(ToolPage):
                             MetaculusApi.get_question_by_post_id(question_id)
                         )
                         if isinstance(metaculus_question, BinaryQuestion):
-                            # Store the question in session state
-                            st.session_state[cls.METACULUS_QUESTION] = metaculus_question
+                            # Store the question data in session state
+                            st.session_state[cls.STATE_QUESTION_TEXT] = metaculus_question.question_text
+                            st.session_state[cls.STATE_RESOLUTION_CRITERIA] = metaculus_question.resolution_criteria or ""
+                            st.session_state[cls.STATE_FINE_PRINT] = metaculus_question.fine_print or ""
+                            st.session_state[cls.STATE_BACKGROUND_INFO] = metaculus_question.background_info or ""
                             st.success("Question fetched successfully!")
+                            st.experimental_rerun()
                         else:
                             st.error(
                                 "Only binary questions are supported at this time."
@@ -77,78 +99,94 @@ class ForecasterPage(ToolPage):
                             f"An error occurred while fetching the question: {e.__class__.__name__}: {e}"
                         )
         
-        # Get question from session state if available (from Metaculus fetch)
-        question_text = ""
-        resolution_criteria = ""
-        fine_print = ""
-        background_info = ""
+        # Main input fields (not in a form)
+        st.subheader("Question Details")
         
-        if cls.METACULUS_QUESTION in st.session_state:
-            question = st.session_state[cls.METACULUS_QUESTION]
-            question_text = question.question_text
-            resolution_criteria = question.resolution_criteria or ""
-            fine_print = question.fine_print or ""
-            background_info = question.background_info or ""
+        # Use callback functions to update session state
+        def update_question_text():
+            st.session_state[cls.STATE_QUESTION_TEXT] = st.session_state.question_text_input
+            
+        def update_resolution_criteria():
+            st.session_state[cls.STATE_RESOLUTION_CRITERIA] = st.session_state.resolution_criteria_input
+            
+        def update_fine_print():
+            st.session_state[cls.STATE_FINE_PRINT] = st.session_state.fine_print_input
+            
+        def update_background_info():
+            st.session_state[cls.STATE_BACKGROUND_INFO] = st.session_state.background_info_input
         
-        # Main forecast form
-        with st.form("forecast_form"):
-            submitted_question_text = st.text_area(
-                "Yes/No Binary Question",
-                value=question_text,
-                height=100
+        # Input fields with callbacks
+        st.text_area(
+            "Yes/No Binary Question",
+            value=st.session_state[cls.STATE_QUESTION_TEXT],
+            height=100,
+            key="question_text_input",
+            on_change=update_question_text
+        )
+        
+        st.text_area(
+            "Resolution Criteria (optional)",
+            value=st.session_state[cls.STATE_RESOLUTION_CRITERIA],
+            height=100,
+            key="resolution_criteria_input",
+            on_change=update_resolution_criteria
+        )
+        
+        st.text_area(
+            "Fine Print (optional)",
+            value=st.session_state[cls.STATE_FINE_PRINT],
+            height=100,
+            key="fine_print_input",
+            on_change=update_fine_print
+        )
+        
+        st.text_area(
+            "Background Info (optional)",
+            value=st.session_state[cls.STATE_BACKGROUND_INFO],
+            height=100,
+            key="background_info_input",
+            on_change=update_background_info
+        )
+        
+        # Submit buttons (outside of forms)
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            full_forecast_button = st.button("Submit (Full Bot)")
+            if full_forecast_button:
+                st.session_state[cls.STATE_USE_DIRECT_FORECAST] = False
+                st.session_state[cls.STATE_READY_TO_FORECAST] = True
+                st.experimental_rerun()
+        
+        with col2:
+            quick_forecast_button = st.button("Quick Forecast (LLM Only)")
+            if quick_forecast_button:
+                st.session_state[cls.STATE_USE_DIRECT_FORECAST] = True
+                st.session_state[cls.STATE_READY_TO_FORECAST] = True
+                st.experimental_rerun()
+        
+        # Check if ready to forecast
+        if st.session_state[cls.STATE_READY_TO_FORECAST]:
+            # Reset the ready flag
+            st.session_state[cls.STATE_READY_TO_FORECAST] = False
+            
+            # Validate input
+            if not st.session_state[cls.STATE_QUESTION_TEXT]:
+                st.error("Question Text is required.")
+                return None
+            
+            # Create the question
+            question = BinaryQuestion(
+                question_text=st.session_state[cls.STATE_QUESTION_TEXT],
+                background_info=st.session_state[cls.STATE_BACKGROUND_INFO],
+                resolution_criteria=st.session_state[cls.STATE_RESOLUTION_CRITERIA],
+                fine_print=st.session_state[cls.STATE_FINE_PRINT],
+                page_url="",
+                api_json={},
             )
             
-            submitted_resolution_criteria = st.text_area(
-                "Resolution Criteria (optional)",
-                value=resolution_criteria,
-                height=100
-            )
-            
-            submitted_fine_print = st.text_area(
-                "Fine Print (optional)",
-                value=fine_print,
-                height=100
-            )
-            
-            submitted_background_info = st.text_area(
-                "Background Info (optional)",
-                value=background_info,
-                height=100
-            )
-
-            # Two columns for form buttons
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                full_bot_submit = st.form_submit_button("Submit (Full Bot)")
-            
-            with col2:
-                quick_forecast_submit = st.form_submit_button("Quick Forecast (LLM Only)")
-            
-            # Check which button was clicked
-            submitted = full_bot_submit or quick_forecast_submit
-            use_direct_forecast = quick_forecast_submit
-
-            if submitted:
-                if not submitted_question_text:
-                    st.error("Question Text is required.")
-                    return None
-                
-                # Create the question
-                question = BinaryQuestion(
-                    question_text=submitted_question_text,
-                    background_info=submitted_background_info,
-                    resolution_criteria=submitted_resolution_criteria,
-                    fine_print=submitted_fine_print,
-                    page_url="",
-                    api_json={},
-                )
-                
-                # Store the forecast mode in session state
-                st.session_state[cls.DIRECT_FORECAST_MODE] = use_direct_forecast
-                
-                # Return the input
-                return ForecastInput(question=question)
+            # Return the input
+            return ForecastInput(question=question)
         
         return None
 
@@ -156,7 +194,7 @@ class ForecasterPage(ToolPage):
     async def _run_tool(cls, input: ForecastInput) -> BinaryReport:
         with st.spinner("Analyzing..."):
             # Check which forecast mode to use
-            use_direct_forecast = st.session_state.get(cls.DIRECT_FORECAST_MODE, False)
+            use_direct_forecast = st.session_state.get(cls.STATE_USE_DIRECT_FORECAST, False)
             
             if use_direct_forecast:
                 # Use direct LLM forecaster instead of full bot
