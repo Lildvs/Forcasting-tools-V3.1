@@ -292,7 +292,7 @@ class BacktestManager:
             return {}
         
         # Import metrics functions
-        from metrics import brier_score, calibration_curve, coverage
+        from metrics import brier_score, calibration_curve, coverage, peer_score
         
         # Group results by forecaster
         metrics = {}
@@ -374,56 +374,11 @@ class BacktestManager:
             return {}
         
         try:
-            # Group by question_id to get all predictions for each question
-            peer_scores = {}
+            # Import peer score function
+            from metrics import peer_score_df
             
-            # Get unique questions and forecasters
-            questions = self.results_df['question_id'].unique()
-            forecasters = self.results_df['model_name'].unique()
-            
-            # Create a matrix of (forecaster, question) scores
-            # For each forecaster, calculate the average Brier score difference vs all other forecasters
-            for forecaster in forecasters:
-                forecaster_scores = []
-                
-                for question in questions:
-                    # Get this forecaster's prediction for this question
-                    forecaster_row = self.results_df[(self.results_df['model_name'] == forecaster) & 
-                                                   (self.results_df['question_id'] == question)]
-                    
-                    if forecaster_row.empty:
-                        continue
-                    
-                    prediction = forecaster_row['prediction'].values[0]
-                    outcome = forecaster_row['outcome'].values[0]
-                    
-                    # Calculate Brier score for this prediction
-                    forecaster_brier = (prediction - outcome) ** 2
-                    
-                    # Get all predictions for this question from other forecasters
-                    other_rows = self.results_df[(self.results_df['model_name'] != forecaster) & 
-                                               (self.results_df['question_id'] == question)]
-                    
-                    if other_rows.empty:
-                        continue
-                    
-                    # Calculate average Brier score for other forecasters
-                    other_predictions = other_rows['prediction'].values
-                    other_outcomes = other_rows['outcome'].values
-                    other_briers = (other_predictions - other_outcomes) ** 2
-                    avg_other_brier = np.mean(other_briers)
-                    
-                    # Calculate relative performance (negative means better than average)
-                    relative_score = forecaster_brier - avg_other_brier
-                    forecaster_scores.append(relative_score)
-                
-                if forecaster_scores:
-                    # Calculate average relative performance across all questions
-                    peer_scores[forecaster] = np.mean(forecaster_scores)
-                    # Invert so positive is better (better than peers)
-                    peer_scores[forecaster] = -peer_scores[forecaster]
-            
-            return peer_scores
+            # Use the peer_score_df function directly
+            return peer_score_df(self.results_df)
             
         except Exception as e:
             logger.error(f"Error calculating peer scores: {e}")

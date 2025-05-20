@@ -1,8 +1,9 @@
 import os
 import streamlit as st
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
-from metrics import brier_score_df, calibration_curve_df, coverage_df
+from metrics import brier_score_df, calibration_curve_df, coverage_df, peer_score_df
 from forecasting_tools.front_end.helpers.app_page import AppPage
 
 class MetricsDashboardPage(AppPage):
@@ -50,13 +51,24 @@ class MetricsDashboardPage(AppPage):
 
             # Peer Score (if multiple models)
             if 'model' in df.columns:
+                # Rename 'model' to 'model_name' if necessary for peer_score_df
+                df_for_peers = df.copy()
+                if 'model' in df_for_peers.columns and 'model_name' not in df_for_peers.columns:
+                    df_for_peers['model_name'] = df_for_peers['model']
+                
+                # Calculate peer scores
+                peer_scores = peer_score_df(df_for_peers)
+                
+                # Create dataframe for display
                 models = df['model'].unique()
                 all_scores = []
                 for m in models:
                     m_df = df[df['model'] == m]
-                    all_scores.append((m, brier_score_df(m_df)))
-                peer_df = pd.DataFrame(all_scores, columns=['Model', 'Brier Score'])
-                peer_df['Peer Score'] = peer_df['Brier Score'] - peer_df['Brier Score'].mean()
+                    brier = brier_score_df(m_df)
+                    peer = peer_scores.get(m, np.nan)
+                    all_scores.append((m, brier, peer))
+                
+                peer_df = pd.DataFrame(all_scores, columns=['Model', 'Brier Score', 'Peer Score'])
                 st.subheader("Peer Score Leaderboard")
                 st.table(peer_df)
             else:

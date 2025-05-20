@@ -17,7 +17,7 @@ from forecasting_tools.util.jsonable import Jsonable
 from forecasting_tools.forecast_helpers.backtest_manager import BacktestManager
 from forecasting_tools.ai_models.model_interfaces.forecaster_base import ForecasterBase
 from forecasting_tools.ai_models.model_interfaces.ensemble_forecaster import EnsembleForecaster
-from metrics import brier_score, calibration_curve, coverage
+from metrics import brier_score, calibration_curve, coverage, peer_score
 
 logger = logging.getLogger(__name__)
 
