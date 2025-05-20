@@ -75,7 +75,12 @@ class ForecasterPage(ToolPage):
             with col1:
                 submitted = st.form_submit_button("Submit (Full Bot)")
             with col2:
-                direct_forecast = st.form_submit_button("Quick Forecast (LLM Only)", key=cls.DIRECT_FORECAST_BUTTON)
+                direct_forecast = st.form_submit_button("Quick Forecast (LLM Only)")
+                # Store button identifier for later use
+                if direct_forecast:
+                    st.session_state[cls.DIRECT_FORECAST_BUTTON] = True
+                else:
+                    st.session_state[cls.DIRECT_FORECAST_BUTTON] = False
 
             if submitted or direct_forecast:
                 if not question_text:
@@ -90,18 +95,13 @@ class ForecasterPage(ToolPage):
                     api_json={},
                 )
                 input_obj = ForecastInput(question=question)
-                if direct_forecast:
-                    # Store flag to use direct LLM instead of full bot
-                    st.session_state["use_direct_forecast"] = True
-                else:
-                    st.session_state["use_direct_forecast"] = False
                 return input_obj
         return None
 
     @classmethod
     async def _run_tool(cls, input: ForecastInput) -> BinaryReport:
         with st.spinner("Analyzing..."):
-            if st.session_state.get("use_direct_forecast", False):
+            if st.session_state.get(cls.DIRECT_FORECAST_BUTTON, False):
                 # Use direct LLM forecaster instead of full bot
                 with st.spinner("Getting quick forecast using LLM..."):
                     # Initialize a forecaster
