@@ -56,6 +56,11 @@ class ForecasterPage(ToolPage):
     @classmethod
     async def _get_input(cls) -> ForecastInput | None:
         cls.__display_metaculus_url_input()
+        
+        # Initialize session state for tracking form submission type
+        if cls.DIRECT_FORECAST_BUTTON not in st.session_state:
+            st.session_state[cls.DIRECT_FORECAST_BUTTON] = False
+            
         with st.form("forecast_form"):
             question_text = st.text_input(
                 "Yes/No Binary Question", key=cls.QUESTION_TEXT_BOX
@@ -73,16 +78,19 @@ class ForecasterPage(ToolPage):
 
             col1, col2 = st.columns(2)
             with col1:
-                submitted = st.form_submit_button("Submit (Full Bot)")
+                submitted_full = st.form_submit_button("Submit (Full Bot)")
             with col2:
-                direct_forecast = st.form_submit_button("Quick Forecast (LLM Only)")
-                # Store button identifier for later use
-                if direct_forecast:
-                    st.session_state[cls.DIRECT_FORECAST_BUTTON] = True
-                else:
-                    st.session_state[cls.DIRECT_FORECAST_BUTTON] = False
-
-            if submitted or direct_forecast:
+                submitted_quick = st.form_submit_button("Quick Forecast (LLM Only)")
+            
+            # Track which button was pressed using session state
+            if submitted_quick:
+                st.session_state[cls.DIRECT_FORECAST_BUTTON] = True
+            elif submitted_full:
+                st.session_state[cls.DIRECT_FORECAST_BUTTON] = False
+                
+            submitted = submitted_full or submitted_quick
+                
+            if submitted:
                 if not question_text:
                     st.error("Question Text is required.")
                     return None
