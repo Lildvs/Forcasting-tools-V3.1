@@ -103,53 +103,45 @@ class EnsembleForecastPage(ToolPage):
             # First row
             with col1:
                 use_llm = st.checkbox("Standard LLM", 
-                                   value=True,
-                                   key=cls.USE_LLM)
+                                   value=True)
                 if use_llm:
                     llm_weight = st.slider("Weight", 
                                         min_value=0.0, 
                                         max_value=1.0, 
-                                        value=0.2,
-                                        key=cls.LLM_WEIGHT)
+                                        value=0.2)
                 else:
                     llm_weight = 0.0
             
             with col2:
                 use_enhanced_llm = st.checkbox("Enhanced LLM",
-                                           value=True,
-                                           key=cls.USE_ENHANCED_LLM)
+                                           value=True)
                 if use_enhanced_llm:
                     enhanced_llm_weight = st.slider("Weight",
                                                 min_value=0.0,
                                                 max_value=1.0,
-                                                value=0.2,
-                                                key=cls.ENHANCED_LLM_WEIGHT)
+                                                value=0.2)
                 else:
                     enhanced_llm_weight = 0.0
             
             with col3:
                 use_expert = st.checkbox("Expert Forecaster",
-                                      value=True,
-                                      key=cls.USE_EXPERT)
+                                      value=True)
                 if use_expert:
                     expert_weight = st.slider("Weight",
                                            min_value=0.0,
                                            max_value=1.0,
-                                           value=0.2,
-                                           key=cls.EXPERT_WEIGHT)
+                                           value=0.2)
                 else:
                     expert_weight = 0.0
             
             with col4:
                 use_historical = st.checkbox("Historical Data",
-                                         value=True,
-                                         key=cls.USE_HISTORICAL)
+                                         value=True)
                 if use_historical:
                     historical_weight = st.slider("Weight",
                                               min_value=0.0,
                                               max_value=1.0,
-                                              value=0.2,
-                                              key=cls.HISTORICAL_WEIGHT)
+                                              value=0.2)
                 else:
                     historical_weight = 0.0
             
@@ -158,47 +150,40 @@ class EnsembleForecastPage(ToolPage):
             
             with col5:
                 use_calibrated = st.checkbox("Calibrated LLM",
-                                         value=False,
-                                         key=cls.USE_CALIBRATED)
+                                         value=False)
                 if use_calibrated:
                     calibrated_weight = st.slider("Weight",
                                               min_value=0.0,
                                               max_value=1.0,
-                                              value=0.1,
-                                              key=cls.CALIBRATED_WEIGHT)
+                                              value=0.1)
                 else:
                     calibrated_weight = 0.0
             
             with col6:
                 use_dynamic = st.checkbox("Dynamic Selection",
-                                       value=False,
-                                       key=cls.USE_DYNAMIC)
+                                       value=False)
                 if use_dynamic:
                     dynamic_weight = st.slider("Weight",
                                            min_value=0.0,
                                            max_value=1.0,
-                                           value=0.1,
-                                           key=cls.DYNAMIC_WEIGHT)
+                                           value=0.1)
                 else:
                     dynamic_weight = 0.0
             
             with col7:
                 use_synthetic = st.checkbox("Synthetic",
-                                        value=False,
-                                        key=cls.USE_SYNTHETIC)
+                                        value=False)
                 if use_synthetic:
                     synthetic_weight = st.slider("Weight",
                                               min_value=0.0,
                                               max_value=1.0,
-                                              value=0.1,
-                                              key=cls.SYNTHETIC_WEIGHT)
+                                              value=0.1)
                 else:
                     synthetic_weight = 0.0
             
             with col8:
                 ensemble_method = st.selectbox("Ensemble Method",
-                                           options=["weighted_average", "simple_average"],
-                                           key=cls.ENSEMBLE_METHOD)
+                                           options=["weighted_average", "simple_average"])
             
             with st.expander("Advanced Options", expanded=False):
                 st.info("These options affect how the forecasters behave.")
@@ -655,9 +640,7 @@ class EnsembleForecastPage(ToolPage):
                 "Enter a Metaculus question URL to autofill the form below."
             )
 
-            metaculus_url = st.text_input(
-                "Metaculus Question URL", key=cls.METACULUS_URL_INPUT
-            )
+            metaculus_url = st.text_input("Metaculus Question URL")
             fetch_button = st.button("Fetch Question")
 
             if fetch_button and metaculus_url:

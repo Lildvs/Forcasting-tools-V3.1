@@ -35,16 +35,9 @@ class ForecasterPage(ToolPage):
     OUTPUT_TYPE = BinaryReport
     EXAMPLES_FILE_PATH = "forecasting_tools/front_end/example_outputs/forecast_page_examples.json"
 
-    # Form input keys
-    QUESTION_TEXT_BOX = "question_text_box"
-    RESOLUTION_CRITERIA_BOX = "resolution_criteria_box"
-    FINE_PRINT_BOX = "fine_print_box"
-    BACKGROUND_INFO_BOX = "background_info_box"
-    NUM_BACKGROUND_QUESTIONS_BOX = "num_background_questions_box"
-    NUM_BASE_RATE_QUESTIONS_BOX = "num_base_rate_questions_box"
-    METACULUS_URL_INPUT = "metaculus_url_input"
-    FETCH_BUTTON = "fetch_button"
-    DIRECT_FORECAST_BUTTON = "direct_forecast_button"
+    # Define constants for session state keys
+    DIRECT_FORECAST_MODE = "direct_forecast_mode"
+    METACULUS_QUESTION = "metaculus_question"
 
     @classmethod
     async def _display_intro_text(cls) -> None:
@@ -55,61 +48,117 @@ class ForecasterPage(ToolPage):
 
     @classmethod
     async def _get_input(cls) -> ForecastInput | None:
-        cls.__display_metaculus_url_input()
-        
-        # Initialize session state for tracking form submission type
-        if cls.DIRECT_FORECAST_BUTTON not in st.session_state:
-            st.session_state[cls.DIRECT_FORECAST_BUTTON] = False
-            
-        with st.form("forecast_form"):
-            question_text = st.text_input(
-                "Yes/No Binary Question", key=cls.QUESTION_TEXT_BOX
-            )
-            resolution_criteria = st.text_area(
-                "Resolution Criteria (optional)",
-                key=cls.RESOLUTION_CRITERIA_BOX,
-            )
-            fine_print = st.text_area(
-                "Fine Print (optional)", key=cls.FINE_PRINT_BOX
-            )
-            background_info = st.text_area(
-                "Background Info (optional)", key=cls.BACKGROUND_INFO_BOX
+        # Display Metaculus URL input
+        with st.expander("Use an existing Metaculus Binary question"):
+            st.write(
+                "Enter a Metaculus question URL to autofill the form below."
             )
 
-            col1, col2 = st.columns(2)
-            with col1:
-                submitted_full = st.form_submit_button("Submit (Full Bot)")
-            with col2:
-                submitted_quick = st.form_submit_button("Quick Forecast (LLM Only)")
+            metaculus_url = st.text_input("Metaculus Question URL")
+            fetch_button = st.button("Fetch Question")
+
+            if fetch_button and metaculus_url:
+                with st.spinner("Fetching question details..."):
+                    try:
+                        question_id = cls.__extract_question_id(metaculus_url)
+                        metaculus_question = (
+                            MetaculusApi.get_question_by_post_id(question_id)
+                        )
+                        if isinstance(metaculus_question, BinaryQuestion):
+                            # Store the question in session state
+                            st.session_state[cls.METACULUS_QUESTION] = metaculus_question
+                            st.success("Question fetched successfully!")
+                        else:
+                            st.error(
+                                "Only binary questions are supported at this time."
+                            )
+                    except Exception as e:
+                        st.error(
+                            f"An error occurred while fetching the question: {e.__class__.__name__}: {e}"
+                        )
+        
+        # Get question from session state if available (from Metaculus fetch)
+        question_text = ""
+        resolution_criteria = ""
+        fine_print = ""
+        background_info = ""
+        
+        if cls.METACULUS_QUESTION in st.session_state:
+            question = st.session_state[cls.METACULUS_QUESTION]
+            question_text = question.question_text
+            resolution_criteria = question.resolution_criteria or ""
+            fine_print = question.fine_print or ""
+            background_info = question.background_info or ""
+        
+        # Main forecast form
+        with st.form("forecast_form"):
+            submitted_question_text = st.text_area(
+                "Yes/No Binary Question",
+                value=question_text,
+                height=100
+            )
             
-            # Track which button was pressed using session state
-            if submitted_quick:
-                st.session_state[cls.DIRECT_FORECAST_BUTTON] = True
-            elif submitted_full:
-                st.session_state[cls.DIRECT_FORECAST_BUTTON] = False
-                
-            submitted = submitted_full or submitted_quick
-                
+            submitted_resolution_criteria = st.text_area(
+                "Resolution Criteria (optional)",
+                value=resolution_criteria,
+                height=100
+            )
+            
+            submitted_fine_print = st.text_area(
+                "Fine Print (optional)",
+                value=fine_print,
+                height=100
+            )
+            
+            submitted_background_info = st.text_area(
+                "Background Info (optional)",
+                value=background_info,
+                height=100
+            )
+
+            # Two columns for form buttons
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                full_bot_submit = st.form_submit_button("Submit (Full Bot)")
+            
+            with col2:
+                quick_forecast_submit = st.form_submit_button("Quick Forecast (LLM Only)")
+            
+            # Check which button was clicked
+            submitted = full_bot_submit or quick_forecast_submit
+            use_direct_forecast = quick_forecast_submit
+
             if submitted:
-                if not question_text:
+                if not submitted_question_text:
                     st.error("Question Text is required.")
                     return None
+                
+                # Create the question
                 question = BinaryQuestion(
-                    question_text=question_text,
-                    background_info=background_info,
-                    resolution_criteria=resolution_criteria,
-                    fine_print=fine_print,
+                    question_text=submitted_question_text,
+                    background_info=submitted_background_info,
+                    resolution_criteria=submitted_resolution_criteria,
+                    fine_print=submitted_fine_print,
                     page_url="",
                     api_json={},
                 )
-                input_obj = ForecastInput(question=question)
-                return input_obj
+                
+                # Store the forecast mode in session state
+                st.session_state[cls.DIRECT_FORECAST_MODE] = use_direct_forecast
+                
+                # Return the input
+                return ForecastInput(question=question)
+        
         return None
 
     @classmethod
     async def _run_tool(cls, input: ForecastInput) -> BinaryReport:
         with st.spinner("Analyzing..."):
-            if st.session_state.get(cls.DIRECT_FORECAST_BUTTON, False):
+            # Check which forecast mode to use
+            use_direct_forecast = st.session_state.get(cls.DIRECT_FORECAST_MODE, False)
+            
+            if use_direct_forecast:
                 # Use direct LLM forecaster instead of full bot
                 with st.spinner("Getting quick forecast using LLM..."):
                     # Initialize a forecaster
@@ -156,36 +205,6 @@ class ForecasterPage(ToolPage):
         ReportDisplayer.display_report_list(outputs)
 
     @classmethod
-    def __display_metaculus_url_input(cls) -> None:
-        with st.expander("Use an existing Metaculus Binary question"):
-            st.write(
-                "Enter a Metaculus question URL to autofill the form below."
-            )
-
-            metaculus_url = st.text_input(
-                "Metaculus Question URL", key=cls.METACULUS_URL_INPUT
-            )
-            fetch_button = st.button("Fetch Question")
-
-            if fetch_button and metaculus_url:
-                with st.spinner("Fetching question details..."):
-                    try:
-                        question_id = cls.__extract_question_id(metaculus_url)
-                        metaculus_question = (
-                            MetaculusApi.get_question_by_post_id(question_id)
-                        )
-                        if isinstance(metaculus_question, BinaryQuestion):
-                            cls.__autofill_form(metaculus_question)
-                        else:
-                            st.error(
-                                "Only binary questions are supported at this time."
-                            )
-                    except Exception as e:
-                        st.error(
-                            f"An error occurred while fetching the question: {e.__class__.__name__}: {e}"
-                        )
-
-    @classmethod
     def __extract_question_id(cls, url: str) -> int:
         match = re.search(r"/questions/(\d+)/", url)
         if match:
@@ -193,17 +212,6 @@ class ForecasterPage(ToolPage):
         raise ValueError(
             "Invalid Metaculus question URL. Please ensure it's in the format: https://metaculus.com/questions/[ID]/[question-title]/"
         )
-
-    @classmethod
-    def __autofill_form(cls, question: BinaryQuestion) -> None:
-        st.session_state[cls.QUESTION_TEXT_BOX] = question.question_text
-        st.session_state[cls.BACKGROUND_INFO_BOX] = (
-            question.background_info or ""
-        )
-        st.session_state[cls.RESOLUTION_CRITERIA_BOX] = (
-            question.resolution_criteria or ""
-        )
-        st.session_state[cls.FINE_PRINT_BOX] = question.fine_print or ""
 
 
 if __name__ == "__main__":
