@@ -165,7 +165,7 @@ class ForecasterPage(ToolPage):
             metaculus_url = st.text_input(
                 "Metaculus Question URL", key=cls.METACULUS_URL_INPUT
             )
-            fetch_button = st.button("Fetch Question", key=cls.FETCH_BUTTON)
+            fetch_button = st.button("Fetch Question")
 
             if fetch_button and metaculus_url:
                 with st.spinner("Fetching question details..."):
