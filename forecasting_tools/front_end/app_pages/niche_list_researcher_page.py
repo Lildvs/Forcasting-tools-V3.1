@@ -45,6 +45,10 @@ class NicheListResearchPage(ToolPage):
     INPUT_TYPE = NicheListInput
     OUTPUT_TYPE = NicheListOutput
     EXAMPLES_FILE_PATH = "forecasting_tools/front_end/example_outputs/niche_list_page_examples.json"
+    
+    # Session state keys
+    STATE_QUESTION_TEXT = "niche_list_question_text"
+    STATE_SUBMITTED = "niche_list_submitted"
 
     @classmethod
     async def _display_intro_text(cls) -> None:
@@ -61,13 +65,40 @@ class NicheListResearchPage(ToolPage):
 
     @classmethod
     async def _get_input(cls) -> NicheListInput | None:
-        with st.form("niche_list_form"):
-            question_text = st.text_input(
-                "Enter your niche list research query here"
-            )
-            submitted = st.form_submit_button("Research and Generate List")
-            if submitted and question_text:
-                return NicheListInput(question_text=question_text)
+        # Initialize session state if needed
+        if cls.STATE_QUESTION_TEXT not in st.session_state:
+            st.session_state[cls.STATE_QUESTION_TEXT] = ""
+        if cls.STATE_SUBMITTED not in st.session_state:
+            st.session_state[cls.STATE_SUBMITTED] = False
+            
+        # Define callbacks
+        def update_question_text():
+            st.session_state[cls.STATE_QUESTION_TEXT] = st.session_state.question_text_input
+            
+        def on_button_click():
+            st.session_state[cls.STATE_SUBMITTED] = True
+            
+        # Display input field
+        st.text_input(
+            "Enter your niche list research query here",
+            value=st.session_state[cls.STATE_QUESTION_TEXT],
+            key="question_text_input",
+            on_change=update_question_text
+        )
+        
+        # Display button
+        if st.button("Research and Generate List", on_click=on_button_click):
+            pass
+            
+        # Process submission
+        if st.session_state[cls.STATE_SUBMITTED]:
+            # Reset submission flag
+            st.session_state[cls.STATE_SUBMITTED] = False
+            
+            # Process input if valid
+            if st.session_state[cls.STATE_QUESTION_TEXT]:
+                return NicheListInput(question_text=st.session_state[cls.STATE_QUESTION_TEXT])
+                
         return None
 
     @classmethod

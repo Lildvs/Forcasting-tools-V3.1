@@ -3,8 +3,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from typing import List, Optional
+import re
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional
 
+import dotenv
 import streamlit as st
 from pydantic import BaseModel
 
@@ -58,120 +62,111 @@ class MetaculusChallengePage(ToolPage):
     USERNAME_INPUT = "username_input"
     PASSWORD_INPUT = "password_input"
     
+    # Session state keys
+    STATE_SAVE_SETTINGS = "metaculus_save_settings"
+    STATE_RUN_FORECAST = "metaculus_run_forecast"
+    
     @classmethod
     async def _display_intro_text(cls) -> None:
+        """Display introduction text for the Metaculus Challenge page"""
         st.markdown("""
-        ## Metaculus AI Challenge
+        # Metaculus AI Challenge
         
-        This tool helps you participate in the Metaculus AI Challenge by configuring and running your forecasting bot
-        on Metaculus questions.
+        This tool helps with the [Metaculus AI Forecasting Challenge](https://www.metaculus.com/tournament/ai-forecasting-challenge/).
         
-        You'll need to:
-        1. Configure your Metaculus API credentials in the Settings section
-        2. Enter a Metaculus question URL to forecast
-        3. Adjust bot parameters as needed
+        You can:
+        - Forecast on Metaculus questions
+        - Submit your forecasts to the platform (if authenticated)
+        - View and analyze the forecasting performance
+        
+        To get started, provide your Metaculus authentication details in the Settings section.
         """)
         
-        # Initialize authentication first
+        # Initialize auth if not already done
         cls._init_auth()
-        
-        # Display authentication status and settings
-        cls._show_settings()
-        
-        # Show random questions if available
-        await cls._display_random_questions()
     
     @classmethod
     def _init_auth(cls) -> None:
-        """Initialize authentication from Streamlit secrets if available"""
-        try:
-            # Streamlit Cloud: Try to get credentials from secrets
-            if hasattr(st, "secrets") and "metaculus" in st.secrets:
-                if "token" in st.secrets.metaculus:
-                    os.environ["METACULUS_TOKEN"] = st.secrets.metaculus.token
-                    logger.info("Set METACULUS_TOKEN from Streamlit secrets")
-                
-                if "api_key" in st.secrets.metaculus:
-                    os.environ["METACULUS_API_KEY"] = st.secrets.metaculus.api_key
-                    logger.info("Set METACULUS_API_KEY from Streamlit secrets")
-                    
-                if "username" in st.secrets.metaculus:
-                    os.environ["METACULUS_USERNAME"] = st.secrets.metaculus.username
-                    logger.info("Set METACULUS_USERNAME from Streamlit secrets")
-                    
-                if "password" in st.secrets.metaculus:
-                    os.environ["METACULUS_PASSWORD"] = st.secrets.metaculus.password
-                    logger.info("Set METACULUS_PASSWORD from Streamlit secrets")
-        except Exception as e:
-            logger.warning(f"Error accessing Streamlit secrets: {e}")
+        """Initialize authentication settings"""
+        # Check if we already have authentication set up
+        if "metaculus_settings" not in st.session_state:
+            # Try to load from environment variables
+            settings = MetaculusChallengeSettings(
+                api_key=os.environ.get("METACULUS_API_KEY", ""),
+                username=os.environ.get("METACULUS_USERNAME", ""),
+                password=os.environ.get("METACULUS_PASSWORD", "")
+            )
+            st.session_state.metaculus_settings = settings
+        
+        # Initialize session state for form submissions
+        if cls.STATE_SAVE_SETTINGS not in st.session_state:
+            st.session_state[cls.STATE_SAVE_SETTINGS] = False
+        if cls.STATE_RUN_FORECAST not in st.session_state:
+            st.session_state[cls.STATE_RUN_FORECAST] = False
     
     @classmethod
     def _show_settings(cls) -> None:
-        """Show and manage Metaculus API settings"""
-        with st.expander("Metaculus API Settings"):
-            # Initialize settings from session state or defaults
-            if "metaculus_settings" not in st.session_state:
-                st.session_state.metaculus_settings = MetaculusChallengeSettings(
-                    api_key=os.environ.get("METACULUS_API_KEY", ""),
-                    username=os.environ.get("METACULUS_USERNAME", ""),
-                    password=os.environ.get("METACULUS_PASSWORD", "")
-                )
+        """Display the settings form"""
+        with st.expander("Settings", expanded=True if not cls._get_auth_status()["authenticated"] else False):
+            st.markdown("### Metaculus Authentication")
             
-            settings = st.session_state.metaculus_settings
+            # Get current settings
+            settings = st.session_state.get("metaculus_settings", MetaculusChallengeSettings())
             
-            # Display current authentication status
-            auth_status = cls._get_auth_status()
-            if auth_status["authenticated"]:
-                st.success("✅ Successfully authenticated with Metaculus")
-            else:
-                st.warning("❌ Not authenticated with Metaculus. Please provide credentials.")
+            # Define callbacks for form submission
+            def on_save_settings():
+                st.session_state[cls.STATE_SAVE_SETTINGS] = True
             
-            # API credentials form
-            with st.form("metaculus_settings_form"):
-                api_key = st.text_input(
-                    "Metaculus API Key", 
-                    value=settings.api_key,
-                    key=cls.API_KEY_INPUT,
-                    type="password"
-                )
+            # Display fields
+            api_key = st.text_input(
+                "Metaculus API Key (optional)",
+                value=settings.api_key,
+                key=cls.API_KEY_INPUT
+            )
+            
+            username = st.text_input(
+                "Metaculus Username",
+                value=settings.username,
+                key=cls.USERNAME_INPUT
+            )
+            
+            password = st.text_input(
+                "Metaculus Password",
+                value=settings.password,
+                key=cls.PASSWORD_INPUT,
+                type="password"
+            )
+            
+            if st.button("Save Settings", on_click=on_save_settings):
+                pass
                 
-                username = st.text_input(
-                    "Metaculus Username",
-                    value=settings.username,
-                    key=cls.USERNAME_INPUT
-                )
+            # Process saved settings
+            if st.session_state[cls.STATE_SAVE_SETTINGS]:
+                st.session_state[cls.STATE_SAVE_SETTINGS] = False
                 
-                password = st.text_input(
-                    "Metaculus Password",
-                    value=settings.password,
-                    key=cls.PASSWORD_INPUT,
-                    type="password"
-                )
+                settings.api_key = api_key
+                settings.username = username
+                settings.password = password
+                st.session_state.metaculus_settings = settings
                 
-                if st.form_submit_button("Save Settings"):
-                    settings.api_key = api_key
-                    settings.username = username
-                    settings.password = password
-                    st.session_state.metaculus_settings = settings
-                    
-                    # Update environment variables
-                    if api_key:
-                        os.environ["METACULUS_API_KEY"] = api_key
-                    if username:
-                        os.environ["METACULUS_USERNAME"] = username
-                    if password:
-                        os.environ["METACULUS_PASSWORD"] = password
-                    
-                    # Generate token if we have username and password but no token in environment
-                    if username and password and "METACULUS_TOKEN" not in os.environ:
-                        st.info("Generating Metaculus token from credentials...")
-                        try:
-                            asyncio.create_task(cls._generate_and_set_token(username, password))
-                        except Exception as e:
-                            st.error(f"Failed to generate token: {str(e)}")
-                    
-                    st.success("Settings saved!")
-                    st.experimental_rerun()
+                # Update environment variables
+                if api_key:
+                    os.environ["METACULUS_API_KEY"] = api_key
+                if username:
+                    os.environ["METACULUS_USERNAME"] = username
+                if password:
+                    os.environ["METACULUS_PASSWORD"] = password
+                
+                # Generate token if we have username and password but no token in environment
+                if username and password and "METACULUS_TOKEN" not in os.environ:
+                    st.info("Generating Metaculus token from credentials...")
+                    try:
+                        asyncio.create_task(cls._generate_and_set_token(username, password))
+                    except Exception as e:
+                        st.error(f"Failed to generate token: {str(e)}")
+                
+                st.success("Settings saved!")
+                st.experimental_rerun()
             
             # Show environment variables status
             st.markdown("### Authentication Status")
@@ -235,56 +230,68 @@ class MetaculusChallengePage(ToolPage):
     async def _get_input(cls) -> MetaculusChallengeInput | None:
         settings = st.session_state.get("metaculus_settings", MetaculusChallengeSettings())
         
-        with st.form("metaculus_challenge_form"):
-            question_url = st.text_input(
-                "Metaculus Question URL",
-                key=cls.QUESTION_URL_INPUT,
-                placeholder="https://www.metaculus.com/questions/123/question-title/"
+        # Create callback for forecast submission
+        def on_forecast_submit():
+            st.session_state[cls.STATE_RUN_FORECAST] = True
+        
+        # Input fields
+        st.subheader("Forecast a Metaculus Question")
+        
+        question_url = st.text_input(
+            "Metaculus Question URL",
+            key=cls.QUESTION_URL_INPUT,
+            placeholder="https://www.metaculus.com/questions/123/question-title/"
+        )
+        
+        research_reports = st.number_input(
+            "Research Reports per Question",
+            min_value=1,
+            max_value=5,
+            value=settings.research_reports,
+            key=cls.RESEARCH_REPORTS_INPUT
+        )
+        
+        predictions_per_report = st.number_input(
+            "Predictions per Research Report",
+            min_value=1,
+            max_value=10,
+            value=settings.predictions_per_report,
+            key=cls.PREDICTIONS_PER_REPORT_INPUT
+        )
+        
+        publish_to_metaculus = st.checkbox(
+            "Publish Reports to Metaculus",
+            value=settings.publish_to_metaculus,
+            key=cls.PUBLISH_TO_METACULUS_INPUT,
+            help="When enabled, forecasts will be submitted to Metaculus"
+        )
+        
+        if st.button("Forecast Question", on_click=on_forecast_submit):
+            pass
+        
+        # Process submission
+        if st.session_state[cls.STATE_RUN_FORECAST]:
+            # Reset the submission flag
+            st.session_state[cls.STATE_RUN_FORECAST] = False
+            
+            # Validate input
+            if not question_url:
+                st.error("Metaculus Question URL is required.")
+                return None
+            
+            # Save settings for next time
+            settings.research_reports = research_reports
+            settings.predictions_per_report = predictions_per_report
+            settings.publish_to_metaculus = publish_to_metaculus
+            st.session_state.metaculus_settings = settings
+            
+            return MetaculusChallengeInput(
+                question_url=question_url,
+                research_reports=research_reports,
+                predictions_per_report=predictions_per_report,
+                publish_to_metaculus=publish_to_metaculus
             )
             
-            research_reports = st.number_input(
-                "Research Reports per Question",
-                min_value=1,
-                max_value=5,
-                value=settings.research_reports,
-                key=cls.RESEARCH_REPORTS_INPUT
-            )
-            
-            predictions_per_report = st.number_input(
-                "Predictions per Research Report",
-                min_value=1,
-                max_value=10,
-                value=settings.predictions_per_report,
-                key=cls.PREDICTIONS_PER_REPORT_INPUT
-            )
-            
-            publish_to_metaculus = st.checkbox(
-                "Publish Reports to Metaculus",
-                value=settings.publish_to_metaculus,
-                key=cls.PUBLISH_TO_METACULUS_INPUT,
-                help="When enabled, forecasts will be submitted to Metaculus"
-            )
-            
-            submitted = st.form_submit_button("Forecast Question")
-            
-            if submitted:
-                if not question_url:
-                    st.error("Metaculus Question URL is required.")
-                    return None
-                
-                # Save settings for next time
-                settings.research_reports = research_reports
-                settings.predictions_per_report = predictions_per_report
-                settings.publish_to_metaculus = publish_to_metaculus
-                st.session_state.metaculus_settings = settings
-                
-                return MetaculusChallengeInput(
-                    question_url=question_url,
-                    research_reports=research_reports,
-                    predictions_per_report=predictions_per_report,
-                    publish_to_metaculus=publish_to_metaculus
-                )
-                
         return None
             
     @classmethod

@@ -344,7 +344,7 @@ class ModelPerformancePage(ToolPage):
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    run_button = st.form_submit_button("Run Backtest")
+                    run_button = st.button("Run Backtest")
                 
                 with col2:
                     append_results = st.checkbox("Append to existing results", value=True,

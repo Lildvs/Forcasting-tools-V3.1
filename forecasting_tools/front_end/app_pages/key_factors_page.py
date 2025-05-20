@@ -53,6 +53,10 @@ class KeyFactorsPage(ToolPage):
     OUTPUT_TYPE = KeyFactorsOutput
     EXAMPLES_FILE_PATH = "forecasting_tools/front_end/example_outputs/key_factors_page_examples.json"
 
+    # Define session state keys
+    STATE_METACULUS_URL = "key_factors_metaculus_url"
+    STATE_SUBMITTED = "key_factors_submitted"
+
     @classmethod
     async def _display_intro_text(cls) -> None:
         # No intro text needed
@@ -60,11 +64,39 @@ class KeyFactorsPage(ToolPage):
 
     @classmethod
     async def _get_input(cls) -> KeyFactorsInput | None:
-        with st.form("key_factors_form"):
-            metaculus_url = st.text_input("Metaculus Question URL")
-            submitted = st.form_submit_button("Find Key Factors")
-            if submitted and metaculus_url:
-                return KeyFactorsInput(metaculus_url=metaculus_url)
+        # Initialize session state if needed
+        if cls.STATE_METACULUS_URL not in st.session_state:
+            st.session_state[cls.STATE_METACULUS_URL] = ""
+        if cls.STATE_SUBMITTED not in st.session_state:
+            st.session_state[cls.STATE_SUBMITTED] = False
+            
+        # Create callback to update session state
+        def update_metaculus_url():
+            st.session_state[cls.STATE_METACULUS_URL] = st.session_state.metaculus_url_input
+            
+        def on_button_click():
+            st.session_state[cls.STATE_SUBMITTED] = True
+        
+        # Display input fields
+        st.text_input(
+            "Metaculus Question URL", 
+            value=st.session_state[cls.STATE_METACULUS_URL],
+            key="metaculus_url_input",
+            on_change=update_metaculus_url
+        )
+        
+        if st.button("Find Key Factors", on_click=on_button_click):
+            pass
+            
+        # Process submission
+        if st.session_state[cls.STATE_SUBMITTED]:
+            # Reset the submitted flag
+            st.session_state[cls.STATE_SUBMITTED] = False
+            
+            # Process the input
+            if st.session_state[cls.STATE_METACULUS_URL]:
+                return KeyFactorsInput(metaculus_url=st.session_state[cls.STATE_METACULUS_URL])
+        
         return None
 
     @classmethod

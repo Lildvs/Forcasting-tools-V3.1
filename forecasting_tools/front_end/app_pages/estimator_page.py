@@ -38,6 +38,10 @@ class EstimatorPage(ToolPage):
     INPUT_TYPE = EstimatorInput
     OUTPUT_TYPE = EstimatorOutput
     EXAMPLES_FILE_PATH = "forecasting_tools/front_end/example_outputs/estimator_page_examples.json"
+    
+    # Session state keys
+    STATE_ESTIMATE_TYPE = "estimator_estimate_type"
+    STATE_SUBMITTED = "estimator_submitted"
 
     @classmethod
     async def _display_intro_text(cls) -> None:
@@ -55,11 +59,40 @@ class EstimatorPage(ToolPage):
 
     @classmethod
     async def _get_input(cls) -> EstimatorInput | None:
-        with st.form("estimator_form"):
-            estimate_type = st.text_input("What do you want to estimate?")
-            submitted = st.form_submit_button("Generate Estimate")
-            if submitted and estimate_type:
-                return EstimatorInput(estimate_type=estimate_type)
+        # Initialize session state if needed
+        if cls.STATE_ESTIMATE_TYPE not in st.session_state:
+            st.session_state[cls.STATE_ESTIMATE_TYPE] = ""
+        if cls.STATE_SUBMITTED not in st.session_state:
+            st.session_state[cls.STATE_SUBMITTED] = False
+            
+        # Define callbacks
+        def update_estimate_type():
+            st.session_state[cls.STATE_ESTIMATE_TYPE] = st.session_state.estimate_type_input
+            
+        def on_button_click():
+            st.session_state[cls.STATE_SUBMITTED] = True
+            
+        # Display input field
+        st.text_input(
+            "What do you want to estimate?", 
+            value=st.session_state[cls.STATE_ESTIMATE_TYPE],
+            key="estimate_type_input",
+            on_change=update_estimate_type
+        )
+        
+        # Display button
+        if st.button("Generate Estimate", on_click=on_button_click):
+            pass
+            
+        # Process submission
+        if st.session_state[cls.STATE_SUBMITTED]:
+            # Reset submission flag
+            st.session_state[cls.STATE_SUBMITTED] = False
+            
+            # Process input if valid
+            if st.session_state[cls.STATE_ESTIMATE_TYPE]:
+                return EstimatorInput(estimate_type=st.session_state[cls.STATE_ESTIMATE_TYPE])
+                
         return None
 
     @classmethod

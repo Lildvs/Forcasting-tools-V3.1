@@ -41,6 +41,10 @@ class BaseRatePage(ToolPage):
     OUTPUT_TYPE = BaseRateReport
     EXAMPLES_FILE_PATH = "forecasting_tools/front_end/example_outputs/base_rate_page_examples.json"
     QUESTION_TEXT_BOX = "base_rate_question_text"
+    
+    # Session state keys
+    STATE_QUESTION_TEXT = "base_rate_question_state"
+    STATE_SUBMITTED = "base_rate_submitted_state"
 
     @classmethod
     async def _display_intro_text(cls) -> None:
@@ -49,14 +53,40 @@ class BaseRatePage(ToolPage):
 
     @classmethod
     async def _get_input(cls) -> BaseRateInput | None:
-        with st.form("base_rate_form"):
-            question_text = st.text_input(
-                "Enter your question here", key=cls.QUESTION_TEXT_BOX
-            )
-            submitted = st.form_submit_button("Submit")
-            if submitted and question_text:
-                input_to_tool = BaseRateInput(question_text=question_text)
-                return input_to_tool
+        # Initialize session state if needed
+        if cls.STATE_QUESTION_TEXT not in st.session_state:
+            st.session_state[cls.STATE_QUESTION_TEXT] = ""
+        if cls.STATE_SUBMITTED not in st.session_state:
+            st.session_state[cls.STATE_SUBMITTED] = False
+            
+        # Define callbacks
+        def update_question_text():
+            st.session_state[cls.STATE_QUESTION_TEXT] = st.session_state[cls.QUESTION_TEXT_BOX]
+            
+        def on_button_click():
+            st.session_state[cls.STATE_SUBMITTED] = True
+            
+        # Display input field
+        st.text_input(
+            "Enter your question here", 
+            key=cls.QUESTION_TEXT_BOX,
+            value=st.session_state[cls.STATE_QUESTION_TEXT],
+            on_change=update_question_text
+        )
+        
+        # Display button
+        if st.button("Submit", on_click=on_button_click):
+            pass
+            
+        # Process submission
+        if st.session_state[cls.STATE_SUBMITTED]:
+            # Reset submission flag
+            st.session_state[cls.STATE_SUBMITTED] = False
+            
+            # Process input if valid
+            if st.session_state[cls.STATE_QUESTION_TEXT]:
+                return BaseRateInput(question_text=st.session_state[cls.STATE_QUESTION_TEXT])
+                
         return None
 
     @classmethod

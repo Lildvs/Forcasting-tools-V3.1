@@ -59,7 +59,7 @@ class HomePage(AppPage):
         st.title("What do you want to do?")
         for page in cls.NON_HOME_PAGES:
             label = page.PAGE_DISPLAY_NAME
-            if st.button(label, key=label):
+            if st.button(label):
                 st.switch_page(page.convert_to_streamlit_page())
 
 

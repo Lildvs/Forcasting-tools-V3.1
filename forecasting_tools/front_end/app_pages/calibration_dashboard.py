@@ -56,7 +56,7 @@ class CalibrationDashboardPage(ToolPage):
                 )
             
             with col2:
-                refresh = st.form_submit_button("Refresh Data")
+                refresh = st.button("Refresh Data")
             
             if refresh or not forecasters:
                 return Jsonable(value={"forecaster": selected_forecaster, "refresh": True})

@@ -51,6 +51,14 @@ class QuestionGeneratorPage(ToolPage):
     INPUT_TYPE = QuestionGeneratorInput
     OUTPUT_TYPE = QuestionGeneratorOutput
     EXAMPLES_FILE_PATH = "forecasting_tools/front_end/example_outputs/question_generator_page_examples.json"
+    
+    # Session state keys
+    STATE_TOPIC = "question_gen_topic"
+    STATE_NUM_QUESTIONS = "question_gen_num_questions"
+    STATE_MODEL = "question_gen_model"
+    STATE_RESOLVE_AFTER = "question_gen_resolve_after"
+    STATE_RESOLVE_BEFORE = "question_gen_resolve_before"
+    STATE_SUBMITTED = "question_gen_submitted"
 
     @classmethod
     async def _display_intro_text(cls) -> None:
@@ -59,6 +67,20 @@ class QuestionGeneratorPage(ToolPage):
 
     @classmethod
     async def _get_input(cls) -> QuestionGeneratorInput | None:
+        # Initialize session state for form values if needed
+        if cls.STATE_TOPIC not in st.session_state:
+            st.session_state[cls.STATE_TOPIC] = "'Lithuanian politics and technology' OR 'Questions related to <question rough draft>'"
+        if cls.STATE_NUM_QUESTIONS not in st.session_state:
+            st.session_state[cls.STATE_NUM_QUESTIONS] = 5
+        if cls.STATE_MODEL not in st.session_state:
+            st.session_state[cls.STATE_MODEL] = "claude-3-7-sonnet-latest"
+        if cls.STATE_RESOLVE_AFTER not in st.session_state:
+            st.session_state[cls.STATE_RESOLVE_AFTER] = datetime.now().date()
+        if cls.STATE_RESOLVE_BEFORE not in st.session_state:
+            st.session_state[cls.STATE_RESOLVE_BEFORE] = (datetime.now() + timedelta(days=90)).date()
+        if cls.STATE_SUBMITTED not in st.session_state:
+            st.session_state[cls.STATE_SUBMITTED] = False
+            
         with st.expander("🎲 Generate random topic ideas"):
             st.markdown(
                 "This tool selects random countries/cities/jobs/stocks/words to seed gpt's brainstorming"
@@ -101,46 +123,86 @@ class QuestionGeneratorPage(ToolPage):
                     news_item_bullets = [f"- {item}" for item in news_items]
                     st.markdown("\n".join(news_item_bullets))
 
-        with st.form("question_generator_form"):
-            topic = st.text_area(
-                "Topic(s)/question idea(s) and additional context (optional)",
-                value="'Lithuanian politics and technology' OR 'Questions related to <question rough draft>'",
+        # Define callbacks for form inputs
+        def update_topic():
+            st.session_state[cls.STATE_TOPIC] = st.session_state.topic_input
+            
+        def update_num_questions():
+            st.session_state[cls.STATE_NUM_QUESTIONS] = st.session_state.num_questions_input
+            
+        def update_model():
+            st.session_state[cls.STATE_MODEL] = st.session_state.model_input
+            
+        def update_resolve_after():
+            st.session_state[cls.STATE_RESOLVE_AFTER] = st.session_state.resolve_after_input
+            
+        def update_resolve_before():
+            st.session_state[cls.STATE_RESOLVE_BEFORE] = st.session_state.resolve_before_input
+            
+        def on_generate_click():
+            st.session_state[cls.STATE_SUBMITTED] = True
+        
+        # Display form elements
+        st.text_area(
+            "Topic(s)/question idea(s) and additional context (optional)",
+            value=st.session_state[cls.STATE_TOPIC],
+            key="topic_input",
+            on_change=update_topic
+        )
+        
+        st.number_input(
+            "Number of questions to generate",
+            min_value=1,
+            max_value=10,
+            value=st.session_state[cls.STATE_NUM_QUESTIONS],
+            key="num_questions_input",
+            on_change=update_num_questions
+        )
+        
+        st.text_input(
+            "Litellm Model (e.g.: claude-3-7-sonnet-latest, gpt-4o, openrouter/<openrouter-model-path>)",
+            value=st.session_state[cls.STATE_MODEL],
+            key="model_input",
+            on_change=update_model
+        )
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.date_input(
+                "Resolve after date",
+                value=st.session_state[cls.STATE_RESOLVE_AFTER],
+                key="resolve_after_input",
+                on_change=update_resolve_after
             )
-            number_of_questions = st.number_input(
-                "Number of questions to generate",
-                min_value=1,
-                max_value=10,
-                value=5,
+        with col2:
+            st.date_input(
+                "Resolve before date",
+                value=st.session_state[cls.STATE_RESOLVE_BEFORE],
+                key="resolve_before_input",
+                on_change=update_resolve_before
             )
-            model = st.text_input(
-                "Litellm Model (e.g.: claude-3-7-sonnet-latest, gpt-4o, openrouter/<openrouter-model-path>)",
-                value="claude-3-7-sonnet-latest",
-            )
-            col1, col2 = st.columns(2)
-            with col1:
-                resolve_after_date = st.date_input(
-                    "Resolve after date",
-                    value=datetime.now().date(),
-                )
-            with col2:
-                resolve_before_date = st.date_input(
-                    "Resolve before date",
-                    value=(datetime.now() + timedelta(days=90)).date(),
-                )
 
-            submitted = st.form_submit_button("Generate Questions")
-            if submitted:
-                return QuestionGeneratorInput(
-                    topic=topic,
-                    number_of_questions=number_of_questions,
-                    resolve_before_date=datetime.combine(
-                        resolve_before_date, datetime.min.time()
-                    ),
-                    resolve_after_date=datetime.combine(
-                        resolve_after_date, datetime.min.time()
-                    ),
-                    model=model,
-                )
+        # Display generate button
+        if st.button("Generate Questions", on_click=on_generate_click):
+            pass
+            
+        # Process form submission
+        if st.session_state[cls.STATE_SUBMITTED]:
+            # Reset submission flag
+            st.session_state[cls.STATE_SUBMITTED] = False
+            
+            return QuestionGeneratorInput(
+                topic=st.session_state[cls.STATE_TOPIC],
+                number_of_questions=st.session_state[cls.STATE_NUM_QUESTIONS],
+                resolve_before_date=datetime.combine(
+                    st.session_state[cls.STATE_RESOLVE_BEFORE], datetime.min.time()
+                ),
+                resolve_after_date=datetime.combine(
+                    st.session_state[cls.STATE_RESOLVE_AFTER], datetime.min.time()
+                ),
+                model=st.session_state[cls.STATE_MODEL],
+            )
+            
         return None
 
     @classmethod

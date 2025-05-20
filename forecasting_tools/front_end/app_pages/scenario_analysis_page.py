@@ -183,9 +183,9 @@ class ScenarioAnalysisPage(ToolPage):
                     max_value = st.number_input("Max Value", value=1.0, step=0.1)
                 step = st.number_input("Step Size", value=0.1, min_value=0.01, max_value=0.5, step=0.01)
             
-            add_factor = st.form_submit_button("Add Factor")
+            add_factor_button = st.button("Add Factor")
             
-            if add_factor and factor_name:
+            if add_factor_button and factor_name:
                 # Create new factor and add to list
                 new_factor = ScenarioKey(
                     name=factor_name,

@@ -209,9 +209,19 @@ class EnsembleForecastPage(ToolPage):
                 recalibration_method = st.selectbox("Recalibration Method", 
                                                 options=["platt", "isotonic", "none"])
             
-            submitted = st.form_submit_button("Run Ensemble Forecast")
-
-            if submitted:
+            # Define a callback for the forecast button
+            def on_forecast_click():
+                st.session_state['ensemble_forecast_submitted'] = True
+                
+            # Add the button outside the expander
+            if st.button("Run Ensemble Forecast", on_click=on_forecast_click):
+                pass
+                
+            # Process submission if button was clicked
+            if st.session_state.get('ensemble_forecast_submitted', False):
+                # Reset the submission flag
+                st.session_state['ensemble_forecast_submitted'] = False
+                
                 if not question_text:
                     st.error("Question Text is required.")
                     return None

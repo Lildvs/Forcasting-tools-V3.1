@@ -155,40 +155,52 @@ class ActiveLearningPage(ToolPage):
             st.markdown(f"**Selected Question**: {question_text}")
             st.markdown(f"**Model Forecast**: {model_probability:.2f}")
             
-            # Create a form for the human review
-            with st.form("active_learning_form"):
-                human_probability = st.slider(
-                    "Your probability estimate",
-                    min_value=0.0,
-                    max_value=1.0,
-                    value=float(model_probability),  # Start with model's prediction
-                    step=0.01,
-                    format="%.2f",
-                    key=cls.HUMAN_PROBABILITY
+            # Create input fields for the human review (not in a form)
+            # Initialize session state for review submission
+            if "review_submitted" not in st.session_state:
+                st.session_state["review_submitted"] = False
+            
+            human_probability = st.slider(
+                "Your probability estimate",
+                min_value=0.0,
+                max_value=1.0,
+                value=float(model_probability),  # Start with model's prediction
+                step=0.01,
+                format="%.2f",
+                key=cls.HUMAN_PROBABILITY
+            )
+            
+            feedback = st.text_area(
+                "Feedback or explanation (optional)",
+                placeholder="Explain your reasoning or provide information that might be useful for the model",
+                key=cls.FEEDBACK_TEXT
+            )
+            
+            update_model = st.checkbox(
+                "Use for model retraining",
+                value=True,
+                help="If checked, this feedback will be used to improve the model in the next training cycle",
+                key=cls.UPDATE_MODEL
+            )
+            
+            # Create a button for submission
+            def on_submit_click():
+                st.session_state["review_submitted"] = True
+            
+            if st.button("Submit Review", on_click=on_submit_click):
+                pass
+            
+            # Process submission    
+            if st.session_state["review_submitted"]:
+                # Reset the flag
+                st.session_state["review_submitted"] = False
+                
+                return ActiveLearningInput(
+                    question_id=question_id,
+                    human_probability=human_probability,
+                    feedback=feedback,
+                    update_model=update_model
                 )
-                
-                feedback = st.text_area(
-                    "Feedback or explanation (optional)",
-                    placeholder="Explain your reasoning or provide information that might be useful for the model",
-                    key=cls.FEEDBACK_TEXT
-                )
-                
-                update_model = st.checkbox(
-                    "Use for model retraining",
-                    value=True,
-                    help="If checked, this feedback will be used to improve the model in the next training cycle",
-                    key=cls.UPDATE_MODEL
-                )
-                
-                submit_button = st.form_submit_button("Submit Review")
-                
-                if submit_button:
-                    return ActiveLearningInput(
-                        question_id=question_id,
-                        human_probability=human_probability,
-                        feedback=feedback,
-                        update_model=update_model
-                    )
         
         return None
 
