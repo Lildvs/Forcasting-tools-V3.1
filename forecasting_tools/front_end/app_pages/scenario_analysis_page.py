@@ -166,26 +166,117 @@ class ScenarioAnalysisPage(ToolPage):
         if 'key_factors' not in st.session_state:
             st.session_state.key_factors = []
         
-        # Add new factor form
-        with st.form("add_factor_form"):
+        # Initialize session state for add factor form
+        if 'factor_name' not in st.session_state:
+            st.session_state.factor_name = ""
+        if 'factor_description' not in st.session_state:
+            st.session_state.factor_description = ""
+        if 'factor_value' not in st.session_state:
+            st.session_state.factor_value = 0.5
+        if 'min_value' not in st.session_state:
+            st.session_state.min_value = 0.0
+        if 'max_value' not in st.session_state:
+            st.session_state.max_value = 1.0
+        if 'step_value' not in st.session_state:
+            st.session_state.step_value = 0.1
+        if 'add_factor_clicked' not in st.session_state:
+            st.session_state.add_factor_clicked = False
+        
+        # Define callback functions
+        def update_factor_name():
+            st.session_state.factor_name = st.session_state.factor_name_input
+            
+        def update_factor_description():
+            st.session_state.factor_description = st.session_state.factor_description_input
+            
+        def update_factor_value():
+            st.session_state.factor_value = st.session_state.factor_value_input
+            
+        def update_min_value():
+            st.session_state.min_value = st.session_state.min_value_input
+            
+        def update_max_value():
+            st.session_state.max_value = st.session_state.max_value_input
+            
+        def update_step_value():
+            st.session_state.step_value = st.session_state.step_value_input
+            
+        def on_add_factor_click():
+            st.session_state.add_factor_clicked = True
+        
+        # Add new factor section
+        st.subheader("Add New Factor")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            factor_name = st.text_input(
+                "Factor Name", 
+                placeholder="e.g., GDP Growth Rate", 
+                key="factor_name_input",
+                on_change=update_factor_name
+            )
+            factor_description = st.text_area(
+                "Description", 
+                placeholder="How this factor affects the forecast", 
+                height=100, 
+                key="factor_description_input",
+                on_change=update_factor_description
+            )
+        
+        with col2:
+            factor_value = st.slider(
+                "Initial Value", 
+                min_value=0.0, 
+                max_value=1.0, 
+                value=0.5, 
+                step=0.01, 
+                key="factor_value_input",
+                on_change=update_factor_value
+            )
             col1, col2 = st.columns(2)
-            
             with col1:
-                factor_name = st.text_input("Factor Name", placeholder="e.g., GDP Growth Rate")
-                factor_description = st.text_area("Description", placeholder="How this factor affects the forecast", height=100)
+                min_value = st.number_input(
+                    "Min Value", 
+                    value=0.0, 
+                    step=0.1, 
+                    key="min_value_input",
+                    on_change=update_min_value
+                )
+            with col2:    
+                max_value = st.number_input(
+                    "Max Value", 
+                    value=1.0, 
+                    step=0.1, 
+                    key="max_value_input",
+                    on_change=update_max_value
+                )
+            step = st.number_input(
+                "Step Size", 
+                value=0.1, 
+                min_value=0.01, 
+                max_value=0.5, 
+                step=0.01,
+                key="step_value_input",
+                on_change=update_step_value
+            )
+        
+        st.button("Add Factor", on_click=on_add_factor_click)
+        
+        # Process add factor if button was clicked
+        if st.session_state.add_factor_clicked:
+            # Reset button state
+            st.session_state.add_factor_clicked = False
             
-            with col2:
-                factor_value = st.slider("Initial Value", min_value=0.0, max_value=1.0, value=0.5, step=0.01)
-                col1, col2 = st.columns(2)
-                with col1:
-                    min_value = st.number_input("Min Value", value=0.0, step=0.1)
-                with col2:    
-                    max_value = st.number_input("Max Value", value=1.0, step=0.1)
-                step = st.number_input("Step Size", value=0.1, min_value=0.01, max_value=0.5, step=0.01)
+            # Get values from session state
+            factor_name = st.session_state.factor_name
+            factor_description = st.session_state.factor_description
+            factor_value = st.session_state.factor_value
+            min_value = st.session_state.min_value
+            max_value = st.session_state.max_value
+            step = st.session_state.step_value
             
-            add_factor_button = st.button("Add Factor")
-            
-            if add_factor_button and factor_name:
+            if factor_name:
                 # Create new factor and add to list
                 new_factor = ScenarioKey(
                     name=factor_name,
@@ -197,6 +288,11 @@ class ScenarioAnalysisPage(ToolPage):
                     description=factor_description
                 )
                 st.session_state.key_factors.append(new_factor.model_dump())
+                
+                # Clear form fields
+                st.session_state.factor_name = ""
+                st.session_state.factor_description = ""
+                
                 st.rerun()  # Refresh to show the updated list
         
         # Display existing factors

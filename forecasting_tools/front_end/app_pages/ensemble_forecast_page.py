@@ -78,199 +78,387 @@ class EnsembleForecastPage(ToolPage):
     async def _get_input(cls) -> EnsembleForecastInput | None:
         cls.__display_metaculus_url_input()
         
-        with st.form("ensemble_form"):
-            st.subheader("Question Details")
+        # Initialize session state for form values
+        for state_key in [
+            cls.QUESTION_TEXT_BOX,
+            cls.RESOLUTION_CRITERIA_BOX,
+            cls.FINE_PRINT_BOX,
+            cls.BACKGROUND_INFO_BOX
+        ]:
+            if state_key not in st.session_state:
+                st.session_state[state_key] = ""
+                
+        # Initialize forecaster configurations
+        for state_key in [
+            'use_llm', 'use_enhanced_llm', 'use_expert', 'use_historical', 
+            'use_calibrated', 'use_dynamic', 'use_synthetic'
+        ]:
+            if state_key not in st.session_state:
+                st.session_state[state_key] = True if state_key in ['use_llm', 'use_enhanced_llm', 'use_expert', 'use_historical'] else False
+                
+        # Initialize weights
+        for state_key, default_value in [
+            ('llm_weight', 0.2), 
+            ('enhanced_llm_weight', 0.2), 
+            ('expert_weight', 0.2), 
+            ('historical_weight', 0.2),
+            ('calibrated_weight', 0.1),
+            ('dynamic_weight', 0.1),
+            ('synthetic_weight', 0.1)
+        ]:
+            if state_key not in st.session_state:
+                st.session_state[state_key] = default_value
+                
+        # Initialize advanced options
+        if 'ensemble_method' not in st.session_state:
+            st.session_state['ensemble_method'] = "weighted_average"
+        if 'synthetic_mode' not in st.session_state:
+            st.session_state['synthetic_mode'] = "fixed"
+        if 'synthetic_probability' not in st.session_state:
+            st.session_state['synthetic_probability'] = 0.7
+        if 'similarity_threshold' not in st.session_state:
+            st.session_state['similarity_threshold'] = 0.75
+        if 'time_decay' not in st.session_state:
+            st.session_state['time_decay'] = 0.9
+        if 'default_domain' not in st.session_state:
+            st.session_state['default_domain'] = None
+        if 'recalibration_method' not in st.session_state:
+            st.session_state['recalibration_method'] = "platt"
+        
+        # Initialize submission flag
+        if 'ensemble_forecast_submitted' not in st.session_state:
+            st.session_state['ensemble_forecast_submitted'] = False
+        
+        # Input field callbacks
+        def update_question_text():
+            st.session_state[cls.QUESTION_TEXT_BOX] = st.session_state.question_text_input
             
-            question_text = st.text_input(
-                "Yes/No Binary Question", key=cls.QUESTION_TEXT_BOX
+        def update_resolution_criteria():
+            st.session_state[cls.RESOLUTION_CRITERIA_BOX] = st.session_state.resolution_criteria_input
+            
+        def update_fine_print():
+            st.session_state[cls.FINE_PRINT_BOX] = st.session_state.fine_print_input
+            
+        def update_background_info():
+            st.session_state[cls.BACKGROUND_INFO_BOX] = st.session_state.background_info_input
+            
+        def on_forecast_click():
+            st.session_state['ensemble_forecast_submitted'] = True
+        
+        # Question details section
+        st.subheader("Question Details")
+        
+        question_text = st.text_input(
+            "Yes/No Binary Question", 
+            value=st.session_state[cls.QUESTION_TEXT_BOX],
+            key="question_text_input",
+            on_change=update_question_text
+        )
+        
+        resolution_criteria = st.text_area(
+            "Resolution Criteria (optional)",
+            value=st.session_state[cls.RESOLUTION_CRITERIA_BOX],
+            key="resolution_criteria_input",
+            on_change=update_resolution_criteria
+        )
+        
+        fine_print = st.text_area(
+            "Fine Print (optional)", 
+            value=st.session_state[cls.FINE_PRINT_BOX],
+            key="fine_print_input",
+            on_change=update_fine_print
+        )
+        
+        background_info = st.text_area(
+            "Background Info (optional)", 
+            value=st.session_state[cls.BACKGROUND_INFO_BOX],
+            key="background_info_input",
+            on_change=update_background_info
+        )
+        
+        st.subheader("Forecaster Configuration")
+        
+        # Create 4 columns (2 rows of 4)
+        col1, col2, col3, col4 = st.columns(4)
+        
+        # First row
+        with col1:
+            use_llm = st.checkbox("Standard LLM", 
+                              value=st.session_state['use_llm'],
+                              key="use_llm_checkbox",
+                              on_change=lambda: setattr(st.session_state, 'use_llm', st.session_state.use_llm_checkbox))
+            if use_llm:
+                llm_weight = st.slider("Weight", 
+                                   min_value=0.0, 
+                                   max_value=1.0, 
+                                   value=st.session_state['llm_weight'],
+                                   key="llm_weight_slider",
+                                   on_change=lambda: setattr(st.session_state, 'llm_weight', st.session_state.llm_weight_slider))
+            else:
+                st.session_state['llm_weight'] = 0.0
+                llm_weight = 0.0
+        
+        with col2:
+            use_enhanced_llm = st.checkbox("Enhanced LLM",
+                                       value=st.session_state['use_enhanced_llm'],
+                                       key="use_enhanced_llm_checkbox",
+                                       on_change=lambda: setattr(st.session_state, 'use_enhanced_llm', st.session_state.use_enhanced_llm_checkbox))
+            if use_enhanced_llm:
+                enhanced_llm_weight = st.slider("Weight",
+                                            min_value=0.0,
+                                            max_value=1.0,
+                                            value=st.session_state['enhanced_llm_weight'],
+                                            key="enhanced_llm_weight_slider",
+                                            on_change=lambda: setattr(st.session_state, 'enhanced_llm_weight', st.session_state.enhanced_llm_weight_slider))
+            else:
+                st.session_state['enhanced_llm_weight'] = 0.0
+                enhanced_llm_weight = 0.0
+        
+        with col3:
+            use_expert = st.checkbox("Expert Forecaster",
+                                  value=st.session_state['use_expert'],
+                                  key="use_expert_checkbox",
+                                  on_change=lambda: setattr(st.session_state, 'use_expert', st.session_state.use_expert_checkbox))
+            if use_expert:
+                expert_weight = st.slider("Weight",
+                                       min_value=0.0,
+                                       max_value=1.0,
+                                       value=st.session_state['expert_weight'],
+                                       key="expert_weight_slider",
+                                       on_change=lambda: setattr(st.session_state, 'expert_weight', st.session_state.expert_weight_slider))
+            else:
+                st.session_state['expert_weight'] = 0.0
+                expert_weight = 0.0
+        
+        with col4:
+            use_historical = st.checkbox("Historical Data",
+                                     value=st.session_state['use_historical'],
+                                     key="use_historical_checkbox",
+                                     on_change=lambda: setattr(st.session_state, 'use_historical', st.session_state.use_historical_checkbox))
+            if use_historical:
+                historical_weight = st.slider("Weight",
+                                          min_value=0.0,
+                                          max_value=1.0,
+                                          value=st.session_state['historical_weight'],
+                                          key="historical_weight_slider",
+                                          on_change=lambda: setattr(st.session_state, 'historical_weight', st.session_state.historical_weight_slider))
+            else:
+                st.session_state['historical_weight'] = 0.0
+                historical_weight = 0.0
+        
+        # Second row
+        col5, col6, col7, col8 = st.columns(4)
+        
+        with col5:
+            use_calibrated = st.checkbox("Calibrated LLM",
+                                     value=st.session_state['use_calibrated'],
+                                     key="use_calibrated_checkbox",
+                                     on_change=lambda: setattr(st.session_state, 'use_calibrated', st.session_state.use_calibrated_checkbox))
+            if use_calibrated:
+                calibrated_weight = st.slider("Weight",
+                                          min_value=0.0,
+                                          max_value=1.0,
+                                          value=st.session_state['calibrated_weight'],
+                                          key="calibrated_weight_slider",
+                                          on_change=lambda: setattr(st.session_state, 'calibrated_weight', st.session_state.calibrated_weight_slider))
+            else:
+                st.session_state['calibrated_weight'] = 0.0
+                calibrated_weight = 0.0
+        
+        with col6:
+            use_dynamic = st.checkbox("Dynamic Selection",
+                                   value=st.session_state['use_dynamic'],
+                                   key="use_dynamic_checkbox",
+                                   on_change=lambda: setattr(st.session_state, 'use_dynamic', st.session_state.use_dynamic_checkbox))
+            if use_dynamic:
+                dynamic_weight = st.slider("Weight",
+                                       min_value=0.0,
+                                       max_value=1.0,
+                                       value=st.session_state['dynamic_weight'],
+                                       key="dynamic_weight_slider",
+                                       on_change=lambda: setattr(st.session_state, 'dynamic_weight', st.session_state.dynamic_weight_slider))
+            else:
+                st.session_state['dynamic_weight'] = 0.0
+                dynamic_weight = 0.0
+        
+        with col7:
+            use_synthetic = st.checkbox("Synthetic",
+                                    value=st.session_state['use_synthetic'],
+                                    key="use_synthetic_checkbox",
+                                    on_change=lambda: setattr(st.session_state, 'use_synthetic', st.session_state.use_synthetic_checkbox))
+            if use_synthetic:
+                synthetic_weight = st.slider("Weight",
+                                          min_value=0.0,
+                                          max_value=1.0,
+                                          value=st.session_state['synthetic_weight'],
+                                          key="synthetic_weight_slider",
+                                          on_change=lambda: setattr(st.session_state, 'synthetic_weight', st.session_state.synthetic_weight_slider))
+            else:
+                st.session_state['synthetic_weight'] = 0.0
+                synthetic_weight = 0.0
+        
+        with col8:
+            ensemble_method = st.selectbox("Ensemble Method",
+                                       options=["weighted_average", "simple_average"],
+                                       index=0 if st.session_state['ensemble_method'] == "weighted_average" else 1,
+                                       key="ensemble_method_select",
+                                       on_change=lambda: setattr(st.session_state, 'ensemble_method', st.session_state.ensemble_method_select))
+        
+        with st.expander("Advanced Options", expanded=False):
+            st.info("These options affect how the forecasters behave.")
+            
+            # Synthetic forecaster settings
+            st.subheader("Synthetic Forecaster")
+            synthetic_mode = st.selectbox(
+                "Mode", 
+                options=["random", "fixed"], 
+                index=0 if st.session_state['synthetic_mode'] == "random" else 1,
+                key="synthetic_mode_select",
+                on_change=lambda: setattr(st.session_state, 'synthetic_mode', st.session_state.synthetic_mode_select)
             )
-            resolution_criteria = st.text_area(
-                "Resolution Criteria (optional)",
-                key=cls.RESOLUTION_CRITERIA_BOX,
+            
+            synthetic_probability = st.slider(
+                "Fixed Probability", 
+                min_value=0.0, 
+                max_value=1.0, 
+                value=st.session_state['synthetic_probability'],
+                key="synthetic_probability_slider",
+                on_change=lambda: setattr(st.session_state, 'synthetic_probability', st.session_state.synthetic_probability_slider)
             )
-            fine_print = st.text_area(
-                "Fine Print (optional)", key=cls.FINE_PRINT_BOX
+            
+            # Historical forecaster settings
+            st.subheader("Historical Forecaster")
+            similarity_threshold = st.slider(
+                "Similarity Threshold", 
+                min_value=0.5, 
+                max_value=0.95, 
+                value=st.session_state['similarity_threshold'],
+                key="similarity_threshold_slider",
+                on_change=lambda: setattr(st.session_state, 'similarity_threshold', st.session_state.similarity_threshold_slider)
             )
-            background_info = st.text_area(
-                "Background Info (optional)", key=cls.BACKGROUND_INFO_BOX
+            
+            time_decay = st.slider(
+                "Time Decay Factor", 
+                min_value=0.5, 
+                max_value=1.0, 
+                value=st.session_state['time_decay'],
+                key="time_decay_slider",
+                on_change=lambda: setattr(st.session_state, 'time_decay', st.session_state.time_decay_slider)
             )
             
-            st.subheader("Forecaster Configuration")
+            # Expert forecaster settings
+            st.subheader("Expert Forecaster")
+            domains = [None, "politics", "economics", "technology", "science", "health", "climate", "geopolitics"]
+            default_domain = st.selectbox(
+                "Default Domain", 
+                options=domains,
+                index=domains.index(st.session_state['default_domain']) if st.session_state['default_domain'] in domains else 0,
+                key="default_domain_select",
+                on_change=lambda: setattr(st.session_state, 'default_domain', st.session_state.default_domain_select)
+            )
             
-            # Create 4 columns (2 rows of 4)
-            col1, col2, col3, col4 = st.columns(4)
+            # Calibration settings
+            st.subheader("Calibration")
+            recalibration_methods = ["platt", "isotonic", "none"]
+            recalibration_method = st.selectbox(
+                "Recalibration Method", 
+                options=recalibration_methods,
+                index=recalibration_methods.index(st.session_state['recalibration_method']),
+                key="recalibration_method_select",
+                on_change=lambda: setattr(st.session_state, 'recalibration_method', st.session_state.recalibration_method_select)
+            )
+        
+        # Run forecast button
+        st.button("Run Ensemble Forecast", on_click=on_forecast_click)
+        
+        # Process submission if button was clicked
+        if st.session_state['ensemble_forecast_submitted']:
+            # Reset the submission flag
+            st.session_state['ensemble_forecast_submitted'] = False
             
-            # First row
-            with col1:
-                use_llm = st.checkbox("Standard LLM", 
-                                   value=True)
-                if use_llm:
-                    llm_weight = st.slider("Weight", 
-                                        min_value=0.0, 
-                                        max_value=1.0, 
-                                        value=0.2)
-                else:
-                    llm_weight = 0.0
+            # Get values from session state
+            question_text = st.session_state[cls.QUESTION_TEXT_BOX]
+            resolution_criteria = st.session_state[cls.RESOLUTION_CRITERIA_BOX]
+            fine_print = st.session_state[cls.FINE_PRINT_BOX]
+            background_info = st.session_state[cls.BACKGROUND_INFO_BOX]
             
-            with col2:
-                use_enhanced_llm = st.checkbox("Enhanced LLM",
-                                           value=True)
-                if use_enhanced_llm:
-                    enhanced_llm_weight = st.slider("Weight",
-                                                min_value=0.0,
-                                                max_value=1.0,
-                                                value=0.2)
-                else:
-                    enhanced_llm_weight = 0.0
+            # Get forecaster configurations
+            use_llm = st.session_state['use_llm']
+            use_enhanced_llm = st.session_state['use_enhanced_llm']
+            use_expert = st.session_state['use_expert']
+            use_historical = st.session_state['use_historical']
+            use_calibrated = st.session_state['use_calibrated']
+            use_dynamic = st.session_state['use_dynamic']
+            use_synthetic = st.session_state['use_synthetic']
             
-            with col3:
-                use_expert = st.checkbox("Expert Forecaster",
-                                      value=True)
-                if use_expert:
-                    expert_weight = st.slider("Weight",
-                                           min_value=0.0,
-                                           max_value=1.0,
-                                           value=0.2)
-                else:
-                    expert_weight = 0.0
+            # Get weights
+            llm_weight = st.session_state['llm_weight']
+            enhanced_llm_weight = st.session_state['enhanced_llm_weight']
+            expert_weight = st.session_state['expert_weight']
+            historical_weight = st.session_state['historical_weight']
+            calibrated_weight = st.session_state['calibrated_weight']
+            dynamic_weight = st.session_state['dynamic_weight']
+            synthetic_weight = st.session_state['synthetic_weight']
             
-            with col4:
-                use_historical = st.checkbox("Historical Data",
-                                         value=True)
-                if use_historical:
-                    historical_weight = st.slider("Weight",
-                                              min_value=0.0,
-                                              max_value=1.0,
-                                              value=0.2)
-                else:
-                    historical_weight = 0.0
+            # Get advanced options
+            ensemble_method = st.session_state['ensemble_method']
+            synthetic_mode = st.session_state['synthetic_mode']
+            synthetic_probability = st.session_state['synthetic_probability']
+            similarity_threshold = st.session_state['similarity_threshold']
+            time_decay = st.session_state['time_decay']
+            default_domain = st.session_state['default_domain']
+            recalibration_method = st.session_state['recalibration_method']
             
-            # Second row
-            col5, col6, col7, col8 = st.columns(4)
-            
-            with col5:
-                use_calibrated = st.checkbox("Calibrated LLM",
-                                         value=False)
-                if use_calibrated:
-                    calibrated_weight = st.slider("Weight",
-                                              min_value=0.0,
-                                              max_value=1.0,
-                                              value=0.1)
-                else:
-                    calibrated_weight = 0.0
-            
-            with col6:
-                use_dynamic = st.checkbox("Dynamic Selection",
-                                       value=False)
-                if use_dynamic:
-                    dynamic_weight = st.slider("Weight",
-                                           min_value=0.0,
-                                           max_value=1.0,
-                                           value=0.1)
-                else:
-                    dynamic_weight = 0.0
-            
-            with col7:
-                use_synthetic = st.checkbox("Synthetic",
-                                        value=False)
-                if use_synthetic:
-                    synthetic_weight = st.slider("Weight",
-                                              min_value=0.0,
-                                              max_value=1.0,
-                                              value=0.1)
-                else:
-                    synthetic_weight = 0.0
-            
-            with col8:
-                ensemble_method = st.selectbox("Ensemble Method",
-                                           options=["weighted_average", "simple_average"])
-            
-            with st.expander("Advanced Options", expanded=False):
-                st.info("These options affect how the forecasters behave.")
+            if not question_text:
+                st.error("Question Text is required.")
+                return None
                 
-                # Synthetic forecaster settings
-                st.subheader("Synthetic Forecaster")
-                synthetic_mode = st.selectbox("Mode", options=["random", "fixed"], value="fixed")
-                synthetic_probability = st.slider("Fixed Probability", min_value=0.0, max_value=1.0, value=0.7)
-                
-                # Historical forecaster settings
-                st.subheader("Historical Forecaster")
-                similarity_threshold = st.slider("Similarity Threshold", min_value=0.5, max_value=0.95, value=0.75)
-                time_decay = st.slider("Time Decay Factor", min_value=0.5, max_value=1.0, value=0.9)
-                
-                # Expert forecaster settings
-                st.subheader("Expert Forecaster")
-                default_domain = st.selectbox("Default Domain", 
-                                          options=[None, "politics", "economics", "technology", "science", 
-                                                 "health", "climate", "geopolitics"])
-                
-                # Calibration settings
-                st.subheader("Calibration")
-                recalibration_method = st.selectbox("Recalibration Method", 
-                                                options=["platt", "isotonic", "none"])
+            # Ensure at least one forecaster is selected
+            if not any([use_llm, use_enhanced_llm, use_expert, use_historical, 
+                       use_calibrated, use_dynamic, use_synthetic]):
+                st.error("Please select at least one forecaster.")
+                return None
             
-            # Define a callback for the forecast button
-            def on_forecast_click():
-                st.session_state['ensemble_forecast_submitted'] = True
+            question = BinaryQuestion(
+                question_text=question_text,
+                background_info=background_info,
+                resolution_criteria=resolution_criteria,
+                fine_print=fine_print,
+                page_url="",
+                api_json={},
+            )
+            
+            # Store forecaster selections in session state
+            st.session_state['forecaster_config'] = {
+                'use_llm': use_llm,
+                'use_enhanced_llm': use_enhanced_llm,
+                'use_expert': use_expert,
+                'use_historical': use_historical,
+                'use_calibrated': use_calibrated,
+                'use_dynamic': use_dynamic,
+                'use_synthetic': use_synthetic,
                 
-            # Add the button outside the expander
-            if st.button("Run Ensemble Forecast", on_click=on_forecast_click):
-                pass
+                'llm_weight': llm_weight,
+                'enhanced_llm_weight': enhanced_llm_weight,
+                'expert_weight': expert_weight,
+                'historical_weight': historical_weight,
+                'calibrated_weight': calibrated_weight,
+                'dynamic_weight': dynamic_weight,
+                'synthetic_weight': synthetic_weight,
                 
-            # Process submission if button was clicked
-            if st.session_state.get('ensemble_forecast_submitted', False):
-                # Reset the submission flag
-                st.session_state['ensemble_forecast_submitted'] = False
+                'ensemble_method': ensemble_method,
                 
-                if not question_text:
-                    st.error("Question Text is required.")
-                    return None
-                    
-                # Ensure at least one forecaster is selected
-                if not any([use_llm, use_enhanced_llm, use_expert, use_historical, 
-                           use_calibrated, use_dynamic, use_synthetic]):
-                    st.error("Please select at least one forecaster.")
-                    return None
-                
-                question = BinaryQuestion(
-                    question_text=question_text,
-                    background_info=background_info,
-                    resolution_criteria=resolution_criteria,
-                    fine_print=fine_print,
-                    page_url="",
-                    api_json={},
-                )
-                
-                # Store forecaster selections in session state
-                st.session_state['forecaster_config'] = {
-                    'use_llm': use_llm,
-                    'use_enhanced_llm': use_enhanced_llm,
-                    'use_expert': use_expert,
-                    'use_historical': use_historical,
-                    'use_calibrated': use_calibrated,
-                    'use_dynamic': use_dynamic,
-                    'use_synthetic': use_synthetic,
-                    
-                    'llm_weight': llm_weight,
-                    'enhanced_llm_weight': enhanced_llm_weight,
-                    'expert_weight': expert_weight,
-                    'historical_weight': historical_weight,
-                    'calibrated_weight': calibrated_weight,
-                    'dynamic_weight': dynamic_weight,
-                    'synthetic_weight': synthetic_weight,
-                    
-                    'ensemble_method': ensemble_method,
-                    
-                    # Advanced options
-                    'synthetic_mode': synthetic_mode,
-                    'synthetic_probability': synthetic_probability,
-                    'similarity_threshold': similarity_threshold,
-                    'time_decay': time_decay,
-                    'default_domain': default_domain,
-                    'recalibration_method': recalibration_method
-                }
-                
-                return EnsembleForecastInput(question=question)
+                # Advanced options
+                'synthetic_mode': synthetic_mode,
+                'synthetic_probability': synthetic_probability,
+                'similarity_threshold': similarity_threshold,
+                'time_decay': time_decay,
+                'default_domain': default_domain,
+                'recalibration_method': recalibration_method
+            }
+            
+            return EnsembleForecastInput(question=question)
+            
         return None
 
     @classmethod

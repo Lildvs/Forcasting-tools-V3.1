@@ -44,26 +44,49 @@ class CalibrationDashboardPage(ToolPage):
         # Load the available forecasters from the calibration data
         forecasters = cls._get_available_forecasters()
         
-        # Create a form for selecting display options
-        with st.form("calibration_form"):
-            col1, col2 = st.columns(2)
+        # Initialize session state for calibration selection
+        if "calibration_forecaster" not in st.session_state:
+            st.session_state["calibration_forecaster"] = forecasters[0] if forecasters else ""
+        if "calibration_refresh" not in st.session_state:
+            st.session_state["calibration_refresh"] = False
             
-            with col1:
-                selected_forecaster = st.selectbox(
-                    "Select Forecaster",
-                    options=forecasters,
-                    key=cls.FORECASTER_SELECT
-                )
+        # Define callbacks
+        def update_selected_forecaster():
+            st.session_state["calibration_forecaster"] = st.session_state[cls.FORECASTER_SELECT]
             
-            with col2:
-                refresh = st.button("Refresh Data")
-            
-            if refresh or not forecasters:
-                return Jsonable(value={"forecaster": selected_forecaster, "refresh": True})
+        def on_refresh_click():
+            st.session_state["calibration_refresh"] = True
         
-        # Allow viewing without submitting the form
+        # Create selection interface
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            selected_forecaster = st.selectbox(
+                "Select Forecaster",
+                options=forecasters,
+                key=cls.FORECASTER_SELECT,
+                on_change=update_selected_forecaster
+            )
+        
+        with col2:
+            st.button("Refresh Data", on_click=on_refresh_click)
+        
+        # Check if refresh was clicked or no forecasters available
+        if st.session_state["calibration_refresh"] or not forecasters:
+            # Reset refresh flag
+            st.session_state["calibration_refresh"] = False
+            
+            return Jsonable(value={
+                "forecaster": st.session_state["calibration_forecaster"], 
+                "refresh": True
+            })
+        
+        # Allow viewing without explicitly submitting
         if forecasters:
-            return Jsonable(value={"forecaster": forecasters[0], "refresh": False})
+            return Jsonable(value={
+                "forecaster": st.session_state["calibration_forecaster"], 
+                "refresh": False
+            })
             
         return None
 

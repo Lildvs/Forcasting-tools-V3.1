@@ -314,52 +314,99 @@ class ModelPerformancePage(ToolPage):
         with tabs[2]:  # Run Backtest
             st.subheader("Run Backtest on Historical Questions")
             
-            with st.form("backtest_form"):
-                available_model_names = list(available_models.keys())
+            # Initialize session state for form data
+            if "backtest_submitted" not in st.session_state:
+                st.session_state["backtest_submitted"] = False
                 
-                selected_models = st.multiselect(
-                    "Select models to test",
-                    options=available_model_names,
-                    default=available_model_names[:min(2, len(available_model_names))],
-                    key=cls.MODEL_SELECT
+            # Initialize session state for form values
+            if "backtest_selected_models" not in st.session_state:
+                st.session_state["backtest_selected_models"] = []
+            if "backtest_num_questions" not in st.session_state:
+                st.session_state["backtest_num_questions"] = 50
+            if "backtest_categories" not in st.session_state:
+                st.session_state["backtest_categories"] = []
+            if "backtest_append_results" not in st.session_state:
+                st.session_state["backtest_append_results"] = True
+            
+            available_model_names = list(available_models.keys())
+            
+            # Define callbacks for form inputs
+            def update_selected_models():
+                st.session_state["backtest_selected_models"] = st.session_state[cls.MODEL_SELECT]
+                
+            def update_num_questions():
+                st.session_state["backtest_num_questions"] = st.session_state[cls.NUM_QUESTIONS]
+                
+            def update_categories():
+                st.session_state["backtest_categories"] = st.session_state[cls.CATEGORY_SELECT]
+                
+            def update_append_results():
+                st.session_state["backtest_append_results"] = st.session_state.append_results_checkbox
+                
+            def on_run_backtest_click():
+                st.session_state["backtest_submitted"] = True
+            
+            # Form inputs with callbacks
+            selected_models = st.multiselect(
+                "Select models to test",
+                options=available_model_names,
+                default=available_model_names[:min(2, len(available_model_names))],
+                key=cls.MODEL_SELECT,
+                on_change=update_selected_models
+            )
+            
+            num_questions = st.slider(
+                "Number of questions",
+                min_value=10,
+                max_value=200,
+                value=50,
+                step=10,
+                key=cls.NUM_QUESTIONS,
+                on_change=update_num_questions
+            )
+            
+            # Placeholder for actual categories in a real implementation
+            categories = st.multiselect(
+                "Question categories (optional)",
+                options=["Economics", "Politics", "Science", "Technology", "Health", "Other"],
+                default=[],
+                key=cls.CATEGORY_SELECT,
+                on_change=update_categories
+            )
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.button("Run Backtest", on_click=on_run_backtest_click)
+            
+            with col2:
+                append_results = st.checkbox(
+                    "Append to existing results", 
+                    value=True,
+                    help="If checked, new results will be added to existing data",
+                    key="append_results_checkbox",
+                    on_change=update_append_results
                 )
+            
+            # Process form submission
+            if st.session_state["backtest_submitted"]:
+                # Reset submission flag
+                st.session_state["backtest_submitted"] = False
                 
-                num_questions = st.slider(
-                    "Number of questions",
-                    min_value=10,
-                    max_value=200,
-                    value=50,
-                    step=10,
-                    key=cls.NUM_QUESTIONS
-                )
+                # Get values from session state
+                selected_models = st.session_state["backtest_selected_models"]
+                num_questions = st.session_state["backtest_num_questions"]
+                categories = st.session_state["backtest_categories"]
                 
-                # Placeholder for actual categories in a real implementation
-                categories = st.multiselect(
-                    "Question categories (optional)",
-                    options=["Economics", "Politics", "Science", "Technology", "Health", "Other"],
-                    default=[],
-                    key=cls.CATEGORY_SELECT
-                )
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    run_button = st.button("Run Backtest")
-                
-                with col2:
-                    append_results = st.checkbox("Append to existing results", value=True,
-                                              help="If checked, new results will be added to existing data")
-                
-                if run_button:
-                    if not selected_models:
-                        st.error("Please select at least one model to test.")
-                    else:
-                        return ModelPerformanceInput(
-                            action="backtest",
-                            models=selected_models,
-                            num_questions=num_questions,
-                            categories=categories if categories else []
-                        )
+                if not selected_models:
+                    st.error("Please select at least one model to test.")
+                else:
+                    return ModelPerformanceInput(
+                        action="backtest",
+                        models=selected_models,
+                        num_questions=num_questions,
+                        categories=categories if categories else []
+                    )
         
         with tabs[3]:  # Settings
             st.subheader("Settings")
