@@ -72,10 +72,36 @@ class ForecasterPage(ToolPage):
                 "Enter a Metaculus question URL to autofill the form below."
             )
 
-            metaculus_url = st.text_input("Metaculus Question URL")
-            fetch_button = st.button("Fetch Question")
+            # Session state for Metaculus URL input
+            if "metaculus_url_input" not in st.session_state:
+                st.session_state["metaculus_url_input"] = ""
+            if "fetch_button_clicked" not in st.session_state:
+                st.session_state["fetch_button_clicked"] = False
+                
+            # Define callbacks
+            def update_metaculus_url():
+                st.session_state["metaculus_url_input"] = st.session_state.metaculus_url
+                
+            def on_fetch_click():
+                st.session_state["fetch_button_clicked"] = True
 
-            if fetch_button and metaculus_url:
+            # Input field with callback
+            metaculus_url = st.text_input(
+                "Metaculus Question URL",
+                value=st.session_state["metaculus_url_input"],
+                key="metaculus_url",
+                on_change=update_metaculus_url
+            )
+            
+            # Button with callback
+            if st.button("Fetch Question", on_click=on_fetch_click):
+                pass
+                
+            # Process fetch button click
+            if st.session_state["fetch_button_clicked"] and metaculus_url:
+                # Reset the flag
+                st.session_state["fetch_button_clicked"] = False
+                
                 with st.spinner("Fetching question details..."):
                     try:
                         question_id = cls.__extract_question_id(metaculus_url)
