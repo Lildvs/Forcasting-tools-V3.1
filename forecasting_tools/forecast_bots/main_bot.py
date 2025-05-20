@@ -6,6 +6,7 @@ from typing import List, Dict, Any
 from forecasting_tools.ai_models.ai_utils.ai_misc import clean_indents
 from forecasting_tools.ai_models.general_llm import GeneralLlm
 from forecasting_tools.data_models.questions import MetaculusQuestion
+from forecasting_tools.data_models.base_types import ReasonedPrediction, ForecastQuestion
 from forecasting_tools.forecast_bots.official_bots.q1_template_bot import (
     Q1TemplateBot2025,
 )
@@ -15,6 +16,9 @@ from forecasting_tools.forecast_bots.official_bots.forecaster_assumptions import
 )
 from forecasting_tools.forecast_helpers.crawl4ai_searcher import Crawl4AISearcher
 from forecasting_tools.forecast_helpers.browser_searcher import BrowserSearcher
+
+# Create a BinaryQuestion alias for compatibility
+BinaryQuestion = ForecastQuestion
 
 logger = logging.getLogger(__name__)
 
