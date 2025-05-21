@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Callable, Coroutine
 
 from forecasting_tools.ai_models.ai_utils.ai_misc import clean_indents
 from forecasting_tools.ai_models.general_llm import GeneralLlm
@@ -45,6 +45,7 @@ class MainBot(Q1TemplateBot2025):
         predictions_per_research_report: int = 5,
         use_research_summary_to_forecast: bool = False,
         use_browser_automation: bool = False,
+        progress_callback: Optional[Callable[[str], Coroutine]] = None,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -61,6 +62,8 @@ class MainBot(Q1TemplateBot2025):
             "model": "openai/o1", 
             "temperature": 0.2
         }
+        # Progress callback for real-time updates
+        self.progress_callback = progress_callback
         # Check if browser automation is available
         if self.use_browser_automation:
             is_available = BrowserSearcher.is_available()
@@ -72,6 +75,12 @@ class MainBot(Q1TemplateBot2025):
     def _get_forecaster(self):
         """Create a fresh forecaster instance to avoid event loop issues"""
         return GeneralLlm(**self.forecaster_config)
+        
+    async def send_progress_update(self, message: str) -> None:
+        """Send a progress update via the callback if available"""
+        if self.progress_callback:
+            await self.progress_callback(message)
+        logger.info(f"Progress update: {message}")
 
     def _format_sources(self) -> str:
         """Format the collected sources into a readable string."""
@@ -91,10 +100,12 @@ class MainBot(Q1TemplateBot2025):
     async def run_research(self, question: MetaculusQuestion) -> str:
         # Avoid using the concurrency limiter directly which can cause event loop issues
         try:
+            await self.send_progress_update("Starting research process...")
             research = ""
             self.research_sources = []  # Reset sources for new research
             
             if os.getenv("PERPLEXITY_API_KEY"):
+                await self.send_progress_update("Using Perplexity for advanced web search...")
                 # Configure Perplexity Sonar with high search context
                 model = GeneralLlm(
                     model="perplexity/sonar-pro",
@@ -156,8 +167,10 @@ class MainBot(Q1TemplateBot2025):
                     """
                 )
                 
+                await self.send_progress_update("Performing intelligent web search and analysis...")
                 # Get the research response
                 research = await model.invoke(prompt)
+                await self.send_progress_update("Web search completed, processing results...")
                 
                 # Add Perplexity as a source
                 self.research_sources.append(
@@ -172,11 +185,13 @@ class MainBot(Q1TemplateBot2025):
                 
                 # If we have additional research sources, combine them
                 if os.getenv("EXA_API_KEY"):
+                    await self.send_progress_update("Enhancing research with Exa.ai focused search...")
                     exa_research = await self._call_exa_smart_searcher(question.question_text)
                     research = f"{research}\n\nAdditional Research:\n{exa_research}"
                 
                 if os.getenv("CRAWL4AI_API_KEY"):
                     try:
+                        await self.send_progress_update("Performing deep web research with Crawl4AI...")
                         crawl4ai_searcher = Crawl4AISearcher()
                         crawl4ai_research = await crawl4ai_searcher.get_formatted_search_results(
                             query=question.question_text,
@@ -196,6 +211,7 @@ class MainBot(Q1TemplateBot2025):
                         )
                     except Exception as e:
                         logger.error(f"Error using Crawl4AI: {e}")
+                        await self.send_progress_update(f"Error with deep web research: {e}")
                     finally:
                         # Always clean up resources, even if an exception occurred
                         if 'crawl4ai_searcher' in locals():
@@ -204,6 +220,7 @@ class MainBot(Q1TemplateBot2025):
                 # Add browser-based research if enabled
                 if self.use_browser_automation:
                     try:
+                        await self.send_progress_update("Starting browser-based research...")
                         browser_searcher = BrowserSearcher()
                         # Use the question text to search on metaforecast.org
                         browser_research = await browser_searcher.get_formatted_search_results(
@@ -223,6 +240,7 @@ class MainBot(Q1TemplateBot2025):
                         )
                     except Exception as e:
                         logger.error(f"Error using Browser automation: {e}")
+                        await self.send_progress_update(f"Error with browser research: {e}")
                     finally:
                         # Always clean up resources
                         if 'browser_searcher' in locals():
@@ -230,6 +248,7 @@ class MainBot(Q1TemplateBot2025):
                 
             elif os.getenv("OPENROUTER_API_KEY"):
                 # Fallback to OpenRouter with similar configuration
+                await self.send_progress_update("Using OpenRouter for research...")
                 model = GeneralLlm(
                     model="openrouter/perplexity/sonar-reasoning",
                     temperature=0.1,
@@ -252,17 +271,21 @@ class MainBot(Q1TemplateBot2025):
                 )
             else:
                 # Fallback to basic research if no Perplexity available
+                await self.send_progress_update("No primary research API available, using basic research methods...")
                 research = await self._get_basic_research(question)
             
             # Add the formatted sources to the research
             research += self._format_sources()
             
+            await self.send_progress_update("Research phase completed.")
             logger.info(
                 f"Found Research for URL {question.page_url}:\n{research}"
             )
             return research
         except Exception as e:
-            logger.error(f"Error in run_research: {e}")
+            error_msg = f"Error in run_research: {e}"
+            logger.error(error_msg)
+            await self.send_progress_update(f"Error in research: {e}")
             # Return a minimal research report to avoid breaking the application
             return f"Error performing research: {str(e)}\n\nPlease try again or check API credentials."
 
@@ -272,6 +295,7 @@ class MainBot(Q1TemplateBot2025):
             research_parts = []
             
             if os.getenv("EXA_API_KEY"):
+                await self.send_progress_update("Using Exa.ai for research...")
                 exa_research = await self._call_exa_smart_searcher(question.question_text)
                 research_parts.append(exa_research)
                 
@@ -288,6 +312,7 @@ class MainBot(Q1TemplateBot2025):
             
             if os.getenv("CRAWL4AI_API_KEY"):
                 try:
+                    await self.send_progress_update("Performing deep web research with Crawl4AI...")
                     crawl4ai_searcher = Crawl4AISearcher()
                     crawl4ai_research = await crawl4ai_searcher.get_formatted_search_results(
                         query=question.question_text,
@@ -308,6 +333,7 @@ class MainBot(Q1TemplateBot2025):
                     
                 except Exception as e:
                     logger.error(f"Error using Crawl4AI: {e}")
+                    await self.send_progress_update(f"Error with deep web research: {e}")
                 finally:
                     # Always clean up resources, even if an exception occurred
                     if 'crawl4ai_searcher' in locals():
@@ -316,6 +342,7 @@ class MainBot(Q1TemplateBot2025):
             # Add browser-based research if enabled
             if self.use_browser_automation:
                 try:
+                    await self.send_progress_update("Starting browser-based research...")
                     browser_searcher = BrowserSearcher()
                     # Use the question text to search on metaforecast.org
                     browser_research = await browser_searcher.get_formatted_search_results(
@@ -335,6 +362,7 @@ class MainBot(Q1TemplateBot2025):
                     )
                 except Exception as e:
                     logger.error(f"Error using Browser automation: {e}")
+                    await self.send_progress_update(f"Error with browser research: {e}")
                 finally:
                     # Always clean up resources
                     if 'browser_searcher' in locals():
@@ -342,7 +370,9 @@ class MainBot(Q1TemplateBot2025):
             
             return "\n\n".join(research_parts) if research_parts else "No research data available."
         except Exception as e:
-            logger.error(f"Error in _get_basic_research: {e}")
+            error_msg = f"Error in _get_basic_research: {e}"
+            logger.error(error_msg)
+            await self.send_progress_update(f"Error in basic research: {e}")
             return f"Error performing basic research: {str(e)}"
 
     @classmethod
@@ -362,14 +392,18 @@ class MainBot(Q1TemplateBot2025):
             # Create a new forecaster for this request
             forecaster = self._get_forecaster()
             
+            await self.send_progress_update("Analyzing research and generating probability estimate...")
             # Get the probability from the forecaster
             prediction = await forecaster.predict(question)
             
+            await self.send_progress_update("Developing detailed reasoning for forecast...")
             # Get the explanation
             reasoning = await forecaster.explain(question)
             
             # Get confidence interval (optional, for future use)
             confidence = await forecaster.confidence_interval(question)
+            
+            await self.send_progress_update(f"Forecast complete: {prediction:.2f} probability")
             
             logger.info(
                 f"Forecasted URL {question.page_url} as {prediction} with reasoning:\n{reasoning}"
@@ -386,7 +420,9 @@ class MainBot(Q1TemplateBot2025):
             # When this is used in ResearchWithPredictions
             return reasoned_prediction.model_dump() if hasattr(reasoned_prediction, 'model_dump') else reasoned_prediction
         except Exception as e:
-            logger.error(f"Error using forecaster: {e}. Falling back to standard method.")
+            error_msg = f"Error using forecaster: {e}. Falling back to standard method."
+            logger.error(error_msg)
+            await self.send_progress_update(f"Error in forecasting: {e}, using backup method...")
             # Fall back to the original implementation if the forecaster fails
             result = await super()._run_forecast_on_binary(question, research)
             # Also convert the result to dictionary if needed
