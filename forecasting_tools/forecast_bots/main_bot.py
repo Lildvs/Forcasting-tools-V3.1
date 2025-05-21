@@ -6,7 +6,8 @@ from typing import List, Dict, Any
 from forecasting_tools.ai_models.ai_utils.ai_misc import clean_indents
 from forecasting_tools.ai_models.general_llm import GeneralLlm
 from forecasting_tools.data_models.questions import MetaculusQuestion
-from forecasting_tools.data_models.base_types import ReasonedPrediction, ForecastQuestion
+from forecasting_tools.data_models.forecast_report import ReasonedPrediction
+from forecasting_tools.data_models.base_types import ForecastQuestion
 from forecasting_tools.forecast_bots.official_bots.q1_template_bot import (
     Q1TemplateBot2025,
 )
@@ -356,8 +357,10 @@ class MainBot(Q1TemplateBot2025):
                 f"Forecasted URL {question.page_url} as {prediction} with reasoning:\n{reasoning}"
             )
             
+            # Create a ReasonedPrediction that conforms to the Pydantic model
             return ReasonedPrediction(
-                prediction_value=prediction, reasoning=reasoning
+                prediction_value=prediction, 
+                reasoning=reasoning
             )
         except Exception as e:
             logger.error(f"Error using forecaster: {e}. Falling back to standard method.")
