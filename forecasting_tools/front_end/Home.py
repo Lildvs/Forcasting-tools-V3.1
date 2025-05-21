@@ -27,6 +27,7 @@ from forecasting_tools.front_end.app_pages.question_generation_page import (
     QuestionGeneratorPage,
 )
 from forecasting_tools.front_end.app_pages.metrics_dashboard_page import MetricsDashboardPage
+from forecasting_tools.front_end.app_pages.never_get_to_page import NeverGetToPage
 from forecasting_tools.front_end.helpers.app_page import AppPage
 from forecasting_tools.util.custom_logger import CustomLogger
 
@@ -37,20 +38,14 @@ class HomePage(AppPage):
     IS_DEFAULT_PAGE: bool = True
 
     FORECASTER_PAGE: type[AppPage] = ForecasterPage
-    BASE_RATE_PAGE: type[AppPage] = BaseRatePage
-    NICHE_LIST_RESEARCH_PAGE: type[AppPage] = NicheListResearchPage
-    ESTIMATOR_PAGE: type[AppPage] = EstimatorPage
-    KEY_FACTORS_PAGE: type[AppPage] = KeyFactorsPage
-    QUESTION_GENERATION_PAGE: type[AppPage] = QuestionGeneratorPage
     METACULUS_CHALLENGE_PAGE: type[AppPage] = MetaculusChallengePage
+    NEVER_GET_TO_PAGE: type[AppPage] = NeverGetToPage
+    
+    # All pages accessible from main navigation
     NON_HOME_PAGES: list[type[AppPage]] = [
         FORECASTER_PAGE,
-        KEY_FACTORS_PAGE,
-        BASE_RATE_PAGE,
-        NICHE_LIST_RESEARCH_PAGE,
-        ESTIMATOR_PAGE,
-        QUESTION_GENERATION_PAGE,
         METACULUS_CHALLENGE_PAGE,
+        NEVER_GET_TO_PAGE,
         MetricsDashboardPage,
     ]
 
