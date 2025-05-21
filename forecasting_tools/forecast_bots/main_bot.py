@@ -83,7 +83,9 @@ class MainBot(Q1TemplateBot2025):
         return formatted_sources
 
     async def run_research(self, question: MetaculusQuestion) -> str:
-        async with self._concurrency_limiter:
+        # Avoid using the concurrency limiter directly which can cause event loop issues
+        # async with self._concurrency_limiter:
+        try:
             research = ""
             self.research_sources = []  # Reset sources for new research
             
@@ -254,81 +256,89 @@ class MainBot(Q1TemplateBot2025):
                 f"Found Research for URL {question.page_url}:\n{research}"
             )
             return research
+        except Exception as e:
+            logger.error(f"Error in run_research: {e}")
+            # Return a minimal research report to avoid breaking the application
+            return f"Error performing research: {str(e)}\n\nPlease try again or check API credentials."
 
     async def _get_basic_research(self, question: MetaculusQuestion) -> str:
         """Fallback research method when Perplexity is not available"""
-        research_parts = []
-        
-        if os.getenv("EXA_API_KEY"):
-            exa_research = await self._call_exa_smart_searcher(question.question_text)
-            research_parts.append(exa_research)
+        try:
+            research_parts = []
             
-            # Add Exa as a source
-            self.research_sources.append(
-                ResearchSource(
-                    title="Exa Smart Search Results",
-                    url="https://exa.ai",
-                    content=exa_research,
-                    source_type="Web Search",
-                    published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                )
-            )
-        
-        if os.getenv("CRAWL4AI_API_KEY"):
-            try:
-                crawl4ai_searcher = Crawl4AISearcher()
-                crawl4ai_research = await crawl4ai_searcher.get_formatted_search_results(
-                    query=question.question_text,
-                    depth=2  # Default depth
-                )
-                research_parts.append(crawl4ai_research)
+            if os.getenv("EXA_API_KEY"):
+                exa_research = await self._call_exa_smart_searcher(question.question_text)
+                research_parts.append(exa_research)
                 
-                # Add Crawl4AI as a source
+                # Add Exa as a source
                 self.research_sources.append(
                     ResearchSource(
-                        title="Crawl4AI Deep Search Results",
-                        url="https://crawl4ai.com",
-                        content=crawl4ai_research,
-                        source_type="Deep Web Search",
+                        title="Exa Smart Search Results",
+                        url="https://exa.ai",
+                        content=exa_research,
+                        source_type="Web Search",
                         published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     )
                 )
-                
-            except Exception as e:
-                logger.error(f"Error using Crawl4AI: {e}")
-            finally:
-                # Always clean up resources, even if an exception occurred
-                if 'crawl4ai_searcher' in locals():
-                    await crawl4ai_searcher.close()
-        
-        # Add browser-based research if enabled
-        if self.use_browser_automation:
-            try:
-                browser_searcher = BrowserSearcher()
-                # Use the question text to search on metaforecast.org
-                browser_research = await browser_searcher.get_formatted_search_results(
-                    query=question.question_text
-                )
-                research_parts.append(browser_research)
-                
-                # Add Browser research as a source
-                self.research_sources.append(
-                    ResearchSource(
-                        title="Browser Automated Research",
-                        url="https://metaforecast.org",
-                        content=browser_research,
-                        source_type="Browser Automation",
-                        published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            if os.getenv("CRAWL4AI_API_KEY"):
+                try:
+                    crawl4ai_searcher = Crawl4AISearcher()
+                    crawl4ai_research = await crawl4ai_searcher.get_formatted_search_results(
+                        query=question.question_text,
+                        depth=2  # Default depth
                     )
-                )
-            except Exception as e:
-                logger.error(f"Error using Browser automation: {e}")
-            finally:
-                # Always clean up resources
-                if 'browser_searcher' in locals():
-                    await browser_searcher.close()
-        
-        return "\n\n".join(research_parts) if research_parts else ""
+                    research_parts.append(crawl4ai_research)
+                    
+                    # Add Crawl4AI as a source
+                    self.research_sources.append(
+                        ResearchSource(
+                            title="Crawl4AI Deep Search Results",
+                            url="https://crawl4ai.com",
+                            content=crawl4ai_research,
+                            source_type="Deep Web Search",
+                            published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        )
+                    )
+                    
+                except Exception as e:
+                    logger.error(f"Error using Crawl4AI: {e}")
+                finally:
+                    # Always clean up resources, even if an exception occurred
+                    if 'crawl4ai_searcher' in locals():
+                        await crawl4ai_searcher.close()
+            
+            # Add browser-based research if enabled
+            if self.use_browser_automation:
+                try:
+                    browser_searcher = BrowserSearcher()
+                    # Use the question text to search on metaforecast.org
+                    browser_research = await browser_searcher.get_formatted_search_results(
+                        query=question.question_text
+                    )
+                    research_parts.append(browser_research)
+                    
+                    # Add Browser research as a source
+                    self.research_sources.append(
+                        ResearchSource(
+                            title="Browser Automated Research",
+                            url="https://metaforecast.org",
+                            content=browser_research,
+                            source_type="Browser Automation",
+                            published_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        )
+                    )
+                except Exception as e:
+                    logger.error(f"Error using Browser automation: {e}")
+                finally:
+                    # Always clean up resources
+                    if 'browser_searcher' in locals():
+                        await browser_searcher.close()
+            
+            return "\n\n".join(research_parts) if research_parts else "No research data available."
+        except Exception as e:
+            logger.error(f"Error in _get_basic_research: {e}")
+            return f"Error performing basic research: {str(e)}"
 
     @classmethod
     def _llm_config_defaults(cls) -> dict[str, str | GeneralLlm]:
