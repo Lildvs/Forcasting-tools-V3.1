@@ -65,7 +65,9 @@ class Q1TemplateBot2025(ForecastBot):
     _concurrency_limiter = asyncio.Semaphore(_max_concurrent_questions)
 
     async def run_research(self, question: MetaculusQuestion) -> str:
-        async with self._concurrency_limiter:
+        # Avoid using the concurrency limiter which can cause event loop issues
+        # async with self._concurrency_limiter:
+        try:
             research = ""
             if os.getenv("EXA_API_KEY"):
                 research = await self._call_exa_smart_searcher(
@@ -83,6 +85,9 @@ class Q1TemplateBot2025(ForecastBot):
                 f"Found Research for URL {question.page_url}:\n{research}"
             )
             return research
+        except Exception as e:
+            logger.error(f"Error in run_research: {e}")
+            return f"Error performing research: {str(e)}\n\nPlease try again or check API credentials."
 
     async def _call_perplexity(
         self, question: str, use_open_router: bool = False

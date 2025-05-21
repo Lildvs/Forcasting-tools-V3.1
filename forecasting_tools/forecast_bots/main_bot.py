@@ -55,10 +55,12 @@ class MainBot(Q1TemplateBot2025):
         )
         self.research_sources: List[ResearchSource] = []
         self.use_browser_automation = use_browser_automation
-        # Initialize forecaster from GeneralLlm
-        self.forecaster = GeneralLlm(
-            model="openai/o1", temperature=0.2
-        )
+        # Instead of sharing a single forecaster instance which can cause event loop issues,
+        # we'll create a new forecaster for each request
+        self.forecaster_config = {
+            "model": "openai/o1", 
+            "temperature": 0.2
+        }
         # Check if browser automation is available
         if self.use_browser_automation:
             is_available = BrowserSearcher.is_available()
@@ -66,6 +68,10 @@ class MainBot(Q1TemplateBot2025):
                 logger.warning("Browser automation requested but Playwright is not available.")
                 logger.warning("Install with: pip install playwright && python -m playwright install")
                 self.use_browser_automation = False
+
+    def _get_forecaster(self):
+        """Create a fresh forecaster instance to avoid event loop issues"""
+        return GeneralLlm(**self.forecaster_config)
 
     def _format_sources(self) -> str:
         """Format the collected sources into a readable string."""
@@ -84,7 +90,6 @@ class MainBot(Q1TemplateBot2025):
 
     async def run_research(self, question: MetaculusQuestion) -> str:
         # Avoid using the concurrency limiter directly which can cause event loop issues
-        # async with self._concurrency_limiter:
         try:
             research = ""
             self.research_sources = []  # Reset sources for new research
@@ -354,25 +359,35 @@ class MainBot(Q1TemplateBot2025):
     ) -> ReasonedPrediction[float]:
         # Use the forecaster's predict and explain methods
         try:
+            # Create a new forecaster for this request
+            forecaster = self._get_forecaster()
+            
             # Get the probability from the forecaster
-            prediction = await self.forecaster.predict(question)
+            prediction = await forecaster.predict(question)
             
             # Get the explanation
-            reasoning = await self.forecaster.explain(question)
+            reasoning = await forecaster.explain(question)
             
             # Get confidence interval (optional, for future use)
-            confidence = await self.forecaster.confidence_interval(question)
+            confidence = await forecaster.confidence_interval(question)
             
             logger.info(
                 f"Forecasted URL {question.page_url} as {prediction} with reasoning:\n{reasoning}"
             )
             
-            # Create a ReasonedPrediction that conforms to the Pydantic model
-            return ReasonedPrediction(
+            # Create a ReasonedPrediction that works with either the model or dictionary format
+            # This makes it compatible with both V3.1 and V4
+            reasoned_prediction = ReasonedPrediction(
                 prediction_value=prediction, 
                 reasoning=reasoning
             )
+            
+            # Convert to dictionary to ensure compatibility with Pydantic V2 validation
+            # When this is used in ResearchWithPredictions
+            return reasoned_prediction.model_dump() if hasattr(reasoned_prediction, 'model_dump') else reasoned_prediction
         except Exception as e:
             logger.error(f"Error using forecaster: {e}. Falling back to standard method.")
             # Fall back to the original implementation if the forecaster fails
-            return await super()._run_forecast_on_binary(question, research)
+            result = await super()._run_forecast_on_binary(question, research)
+            # Also convert the result to dictionary if needed
+            return result.model_dump() if hasattr(result, 'model_dump') else result
